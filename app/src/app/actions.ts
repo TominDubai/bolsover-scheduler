@@ -149,6 +149,25 @@ export async function deleteVariation(projectId: string, id: string) {
   return { ok: true };
 }
 
+// ---------- programme ----------
+export async function saveProgramme(projectId: string, packageId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const pct = Math.max(0, Math.min(100, Math.round(num(fd.get("pct_complete")))));
+  const patch: Record<string, unknown> = {
+    pct_complete: pct,
+    actual_start: nz(fd.get("actual_start")),
+    actual_finish: nz(fd.get("actual_finish")),
+    forecast_finish: nz(fd.get("forecast_finish")),
+    note: nz(fd.get("note")),
+  };
+  if (pct === 100 && !patch.actual_finish) patch.actual_finish = new Date().toISOString().slice(0, 10);
+  if (pct > 0 && !patch.actual_start) patch.actual_start = new Date().toISOString().slice(0, 10);
+  const { error } = await supabase.from("programme_packages").update(patch).eq("id", packageId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  revalidatePath(`/projects/${projectId}`);
+  return { ok: true, at: new Date().toISOString() };
+}
+
 // ---------- team ----------
 const ROLES = ["PM", "SITE", "QS", "MANAGEMENT", "ADMIN"];
 const email = (v: FormDataEntryValue | null) => { const s = nz(v)?.toLowerCase() ?? null; if (s && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Error("That email address doesn't look right."); return s; };

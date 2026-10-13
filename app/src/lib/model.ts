@@ -40,6 +40,13 @@ export type Person = { id: string; name: string; full_name: string | null; role:
 export type Me = { name: string; canEstimation: boolean; canProjects: boolean; canTeam: boolean };
 export type Contractor = { id: string; name: string };
 export type Variation = { id: string; project_id: string; vo_no: number; description: string | null; value: number; approved_on: string | null };
+export type Package = {
+  id: string; project_id: string; code: string | null; name: string; sort: number;
+  planned_start: string | null; planned_finish: string | null; planned_days: number | null;
+  actual_start: string | null; actual_finish: string | null; forecast_finish: string | null;
+  pct_complete: number; note: string | null; updated_at: string;
+};
+export type Activity = { id: string; package_id: string; code: string | null; name: string; sort: number; planned_start: string | null; planned_finish: string | null; planned_days: number | null };
 export type History = { id: string; from_status: Status | null; to_status: Status; changed_at: string; note: string | null; changed_by: string | null; who?: string | null };
 
 export const aed = (v: number | null | undefined) => v ? "AED " + Math.round(v).toLocaleString("en-GB") : "—";
@@ -75,4 +82,22 @@ export function dueTone(due: string | null) {
   if (!due) return null;
   const d = Math.round((new Date(due).getTime() - Date.now()) / 86400000);
   return { d, tone: d < 0 ? "crit" : d <= 3 ? "warn" : "ok" } as const;
+}
+
+/** Programme package health against its baseline finish. slip = days the (actual or forecast) finish sits past the baseline. */
+export function packageTone(k: Pick<Package, "planned_start" | "planned_finish" | "actual_start" | "actual_finish" | "forecast_finish" | "pct_complete">, today = new Date()): { tone: Tone; text: string; slip: number | null } {
+  const t0 = new Date(today).setHours(0, 0, 0, 0);
+  const day = (d: string) => Math.round((new Date(d).getTime() - t0) / 86400000);
+  const plan = k.planned_finish;
+  const end = k.actual_finish ?? k.forecast_finish;
+  const slip = plan && end ? Math.round((new Date(end).getTime() - new Date(plan).getTime()) / 86400000) : null;
+  if (k.actual_finish || k.pct_complete >= 100) return { tone: "done", text: slip == null ? "Done" : slip > 0 ? `Done ${slip}d late` : slip < 0 ? `Done ${-slip}d early` : "Done on time", slip };
+  if (!plan) return { tone: "none", text: "No baseline", slip };
+  if (slip != null && slip > 0) return { tone: slip > 14 ? "crit" : "warn", text: `Forecast ${slip}d late`, slip };
+  const left = day(plan);
+  const started = !!k.actual_start || k.pct_complete > 0;
+  if (left < 0) return { tone: -left > 14 ? "crit" : "warn", text: `${-left}d overdue`, slip };
+  if (!started && k.planned_start && day(k.planned_start) < 0) return { tone: "warn", text: `Should have started ${-day(k.planned_start)}d ago`, slip };
+  if (!started) return { tone: "none", text: day(k.planned_start ?? plan) === 0 ? "Starts today" : `Starts in ${day(k.planned_start ?? plan)}d`, slip };
+  return { tone: left <= 7 ? "soon" : "ok", text: left === 0 ? "Due today" : `${left}d left`, slip };
 }

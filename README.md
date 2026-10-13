@@ -8,6 +8,10 @@ Bolsover Building Contracting's project pipeline tracker — replaces `Quotation
 - `design/` — design-direction pages (to come).
 - `docs/` — team guide (to come).
 
+## Programme
+
+Each project from WON onwards gets a **Programme** panel on its page: the package-level baseline (planned start / finish / days) taken from Jasper's P6 "Classic Schedule Layout" export, with the activities under each package as read-only checkpoints. Site progress is recorded per package — % complete, actual start, forecast finish, actual finish, note — and each package shows its health against the baseline (late / overdue / due / done). Progress changes go into `change_log` (kind `programme`) so they ride the digest. Load a new project's programme with a seed like `import/sidra170_programme.sql` (idempotent — re-run to refresh the baseline without touching progress).
+
 ## Pipeline
 
 `PENDING` (being priced) → `QUOTED` (sent, awaiting feedback) → `WON` → `PRE_MOB` (approvals, permits, procurement, access, site readiness) → `LIVE` → `COMPLETED`

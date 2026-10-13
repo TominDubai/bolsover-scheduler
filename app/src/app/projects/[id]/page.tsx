@@ -4,20 +4,26 @@ import Shell from "@/components/Shell";
 import Failed from "@/components/Failed";
 import ProjectForm from "@/components/ProjectForm";
 import Variations from "@/components/Variations";
+import Programme from "@/components/Programme";
 import { getProject, getPeople, getContractors, getMe } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
-import { STAGES, ORDER, LABEL, aed, fmtD, title, tone, delayText, isQuote, type Variation, type History } from "@/lib/model";
+import { STAGES, ORDER, LABEL, aed, fmtD, title, tone, delayText, isQuote, type Variation, type History, type Package, type Activity } from "@/lib/model";
 
 export const dynamic = "force-dynamic";
 
 async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [p, people, contractors, me, { data: vos }, { data: hist }] = await Promise.all([
+  const [p, people, contractors, me, { data: vos }, { data: hist }, { data: pkgs }] = await Promise.all([
     getProject(id), getPeople(), getContractors(), getMe(),
     supabase.from("variations").select("*").eq("project_id", id).order("vo_no"),
     supabase.from("status_history").select("*, who:people(name)").eq("project_id", id).order("changed_at", { ascending: false }),
+    supabase.from("programme_packages").select("*").eq("project_id", id).order("sort"),
   ]);
+  const packages = (pkgs ?? []) as Package[];
+  const { data: acts } = packages.length
+    ? await supabase.from("programme_activities").select("*").in("package_id", packages.map((k) => k.id)).order("sort")
+    : { data: [] as Activity[] };
   if (!p) notFound();
   const t = tone(p);
   const canEdit = me.canProjects || (me.canEstimation && isQuote(p.status));
@@ -51,6 +57,9 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
           </div>
           <Variations projectId={p.id} signedQuote={p.signed_quote} vos={(vos ?? []) as Variation[]} canEdit={me.canProjects} />
         </div>
+        {(packages.length > 0 || ORDER[p.status] >= ORDER.WON) && ORDER[p.status] <= ORDER.COMPLETED && (
+          <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects} />
+        )}
         {canEdit ? (
           <div className="panel">
             <h2>Edit project</h2>
