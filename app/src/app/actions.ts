@@ -31,7 +31,7 @@ function projectFields(fd: FormData) {
   if (has("contractor_id")) out.contractor_id = nz(fd.get("contractor_id"));
   if (has("pm_id")) out.pm_id = nz(fd.get("pm_id"));
   if (has("pm2_id")) out.pm2_id = nz(fd.get("pm2_id"));
-  if (has("designer_id")) out.designer_id = nz(fd.get("designer_id"));
+  if (has("site_engineer_id")) out.site_engineer_id = nz(fd.get("site_engineer_id"));
   if (has("status")) out.status = (nz(fd.get("status")) ?? "PENDING") as Status;
   if (has("received_date")) out.received_date = nz(fd.get("received_date"));
   if (has("start_date")) out.start_date = nz(fd.get("start_date"));
@@ -150,7 +150,7 @@ export async function deleteVariation(projectId: string, id: string) {
 }
 
 // ---------- team ----------
-const ROLES = ["PM", "DESIGNER", "TECHNICAL_DESIGNER", "ESTIMATOR", "MANAGEMENT", "ADMIN"];
+const ROLES = ["PM", "SITE", "QS", "MANAGEMENT", "ADMIN"];
 const email = (v: FormDataEntryValue | null) => { const s = nz(v)?.toLowerCase() ?? null; if (s && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)) throw new Error("That email address doesn't look right."); return s; };
 const phone = (v: FormDataEntryValue | null) => { const s = nz(v)?.replace(/[\s\-()]/g, "") ?? null; if (s && !/^\+?\d{7,15}$/.test(s)) throw new Error("WhatsApp number should be digits only, e.g. +9715xxxxxxx"); return s; };
 

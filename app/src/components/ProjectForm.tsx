@@ -10,8 +10,8 @@ export default function ProjectForm({ project, people, contractors, estimationOn
   const action = project ? saveProject.bind(null, project.id) : createProject;
   const [state, formAction, pending] = useActionState(action, null as { error?: string; ok?: boolean; at?: string } | null);
   const pms = people.filter((p) => p.role === "PM" || p.role === "MANAGEMENT");
-  const designers = people.filter((p) => p.role === "DESIGNER" || p.role === "TECHNICAL_DESIGNER");
-  const estimators = people.filter((p) => p.role === "ESTIMATOR" || p.role === "ADMIN" || p.role === "MANAGEMENT");
+  const siteEngs = people.filter((p) => p.role === "SITE" || p.role === "PM");
+  const estimators = people.filter((p) => p.role === "QS" || p.role === "ADMIN" || p.role === "MANAGEMENT");
   const v = (k: keyof Project) => (project?.[k] ?? "") as string;
   return (
     <form action={formAction} className="form">
@@ -26,8 +26,8 @@ export default function ProjectForm({ project, people, contractors, estimationOn
         <select id="pm_id" name="pm_id" disabled={lock} defaultValue={v("pm_id")}><option value="">Unassigned</option>{pms.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
       <div className="field"><label htmlFor="pm2_id">Second PM (optional)</label>
         <select id="pm2_id" name="pm2_id" disabled={lock} defaultValue={v("pm2_id")}><option value="">—</option>{pms.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
-      <div className="field"><label htmlFor="designer_id">Designer <small>(assigned by Jinky)</small></label>
-        <select id="designer_id" name="designer_id" disabled={lock} defaultValue={v("designer_id")}><option value="">—</option>{designers.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
+      <div className="field"><label htmlFor="site_engineer_id">Site engineer</label>
+        <select id="site_engineer_id" name="site_engineer_id" disabled={lock} defaultValue={v("site_engineer_id")}><option value="">—</option>{siteEngs.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
       <div className="field"><label htmlFor="signed_quote">Signed quote (AED inc. VAT)</label><input id="signed_quote" name="signed_quote" disabled={lock} inputMode="decimal" defaultValue={project?.signed_quote ?? ""} /></div>
       <div className="field"><label htmlFor="received_date">Enquiry received</label><input id="received_date" name="received_date" type="date" defaultValue={v("received_date")} /></div>
       <div className="field"><label htmlFor="start_date">Project start <small>(date payment received)</small></label><input id="start_date" name="start_date" disabled={lock} type="date" defaultValue={v("start_date")} /></div>
@@ -36,7 +36,7 @@ export default function ProjectForm({ project, people, contractors, estimationOn
       <div className="field wide sep"><span className="sectionlabel">Pricing (Ramus)</span></div>
       <div className="field"><label htmlFor="quote_stage">Pricing stage</label>
         <select id="quote_stage" name="quote_stage" defaultValue={project?.quote_stage ?? "QUEUED"}>{QUOTE_STAGES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
-      <div className="field"><label htmlFor="estimator_id">Estimator</label>
+      <div className="field"><label htmlFor="estimator_id">QS</label>
         <select id="estimator_id" name="estimator_id" defaultValue={v("estimator_id")}><option value="">—</option>{estimators.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
       <div className="field"><label htmlFor="quote_type">Quote type</label><input id="quote_type" name="quote_type" defaultValue={v("quote_type")} placeholder="FULL QUOTE / KITCHEN / VO1 …" /></div>
       <div className="field"><label>Scope</label><div className="checks">{SCOPES.map((s) => <label key={s}><input type="checkbox" name="scope" value={s} defaultChecked={(project?.scope ?? "").split(", ").includes(s)} /> {s}</label>)}</div></div>

@@ -3,10 +3,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LABEL, ORDER, aed, fmtD, title, tone, delayText, type Project } from "@/lib/model";
 
-type Key = "enquiry_no" | "name" | "client" | "status" | "pm" | "designer" | "start_date" | "target_date" | "days_delayed" | "project_value";
+type Key = "enquiry_no" | "name" | "client" | "status" | "pm" | "site_engineer" | "start_date" | "target_date" | "days_delayed" | "project_value";
 const COLS: [Key, string, boolean][] = [
   ["enquiry_no", "Enq", false], ["name", "Project", false], ["client", "Client", false], ["status", "Status", false], ["pm", "PM", false],
-  ["designer", "Designer", false], ["start_date", "Start", true], ["target_date", "Target", true], ["days_delayed", "Delay", true], ["project_value", "Value", true],
+  ["site_engineer", "Site eng.", false], ["start_date", "Start", true], ["target_date", "Target", true], ["days_delayed", "Delay", true], ["project_value", "Value", true],
 ];
 
 export default function ListTable({ projects }: { projects: Project[] }) {
@@ -29,7 +29,7 @@ export default function ListTable({ projects }: { projects: Project[] }) {
               <tr key={p.id} className="row" onClick={() => router.push(`/projects/${p.id}`)}>
                 <td className="enq">{p.enquiry_no ?? "—"}</td><td className="name">{title(p.name)}</td><td>{title(p.client)}</td>
                 <td><span className={`status s-${p.status}`}>{LABEL[p.status]}</span></td>
-                <td>{p.pm ? title(p.pm) : <i>unassigned</i>}{p.pm2 ? ` + ${title(p.pm2)}` : ""}</td><td>{p.designer ? title(p.designer) : "—"}</td>
+                <td>{p.pm ? title(p.pm) : <i>unassigned</i>}{p.pm2 ? ` + ${title(p.pm2)}` : ""}</td><td>{p.site_engineer ? title(p.site_engineer) : "—"}</td>
                 <td className="num">{fmtD(p.start_date)}</td><td className="num">{fmtD(p.target_date)}</td>
                 <td className="num"><span className={`pill ${t}`}>{delayText(p)}</span></td>
                 <td className="num">{aed(p.project_value)}</td>

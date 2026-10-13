@@ -39,7 +39,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
             <h2>At a glance</h2>
             <dl>
               <dt>Project manager</dt><dd>{p.pm ? title(p.pm) : "Unassigned"}{p.pm2 ? ` + ${title(p.pm2)}` : ""}</dd>
-              <dt>Designer</dt><dd>{p.designer ? title(p.designer) : "—"}</dd>
+              <dt>Site engineer</dt><dd>{p.site_engineer ? title(p.site_engineer) : "—"}</dd>
               <dt>Enquiry received</dt><dd>{fmtD(p.received_date)}</dd>
               <dt>Project start</dt><dd>{fmtD(p.start_date)}</dd>
               <dt>Target completion</dt><dd>{fmtD(p.target_date)}{p.days_to_completion != null && <small> · {p.days_to_completion} days programme</small>}</dd>
@@ -60,7 +60,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
           <div className="panel"><h2>Details</h2><dl>
             <dt>Enquiry no.</dt><dd>{p.enquiry_no ?? "—"}</dd>
             <dt>Contractor</dt><dd>{p.contractor ?? "—"}</dd>
-            <dt>Estimator</dt><dd>{p.estimator ? title(p.estimator) : "—"}</dd>
+            <dt>QS</dt><dd>{p.estimator ? title(p.estimator) : "—"}</dd>
             <dt>Quoted value</dt><dd>{aed(p.quoted_value)}</dd>
             <dt>Folder</dt><dd>{p.folder_path ?? "—"}</dd>
             <dt>Notes</dt><dd>{p.notes ?? "—"}</dd>

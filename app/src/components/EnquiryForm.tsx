@@ -8,7 +8,7 @@ export default function EnquiryForm({ nextNo, people, contractors }: { nextNo: s
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState<string | null>(null); // last success already acknowledged
   const [state, formAction, pending] = useActionState(createEnquiry, null as { error?: string; ok?: boolean; enquiry_no?: string; id?: string } | null);
-  const estimators = people.filter((p) => p.role === "ESTIMATOR" || p.role === "ADMIN" || p.role === "MANAGEMENT");
+  const estimators = people.filter((p) => p.role === "QS" || p.role === "ADMIN" || p.role === "MANAGEMENT");
   const today = new Date().toISOString().slice(0, 10);
   if (state?.ok && seen !== state.id) {
     return <div className="newenq"><span className="msg">Enquiry <b>{state.enquiry_no}</b> added. <Link href={`/projects/${state.id}`}>Open it</Link> or </span><button className="btn sm bronze" onClick={() => { setSeen(state.id!); setOpen(true); }}>+ Another enquiry</button></div>;
@@ -24,7 +24,7 @@ export default function EnquiryForm({ nextNo, people, contractors }: { nextNo: s
         <div className="field"><label htmlFor="client">Client (end user)</label><input id="client" name="client" /></div>
         <div className="field"><label htmlFor="contractor_id">Main contractor</label>
           <select id="contractor_id" name="contractor_id" defaultValue=""><option value="">— / Direct</option>{contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-        <div className="field"><label htmlFor="estimator_id">Estimator</label>
+        <div className="field"><label htmlFor="estimator_id">QS</label>
           <select id="estimator_id" name="estimator_id" defaultValue={estimators.find((p) => p.name === "RAMUS")?.id ?? ""}><option value="">—</option>{estimators.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
         <div className="field"><label htmlFor="quote_type">Quote type</label><input id="quote_type" name="quote_type" list="quote-types" placeholder="FULL QUOTE / KITCHEN / VO1 …" /><datalist id="quote-types"><option value="FULL QUOTE" /><option value="KITCHEN" /><option value="VO1" /><option value="VO2" /><option value="ADDTL" /><option value="REVISED" /></datalist></div>
         <div className="field"><label>Scope</label><div className="checks">{SCOPES.map((s) => <label key={s}><input type="checkbox" name="scope" value={s} defaultChecked={s === "Joinery"} /> {s}</label>)}</div></div>

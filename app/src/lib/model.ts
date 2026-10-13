@@ -26,14 +26,14 @@ export const QUOTE_LABEL: Record<QuoteStage, string> = Object.fromEntries(QUOTE_
 
 export type Project = {
   id: string; enquiry_no: string | null; name: string; client: string | null;
-  contractor_id: string | null; pm_id: string | null; pm2_id: string | null; designer_id: string | null; technical_designer_id: string | null;
+  contractor_id: string | null; pm_id: string | null; pm2_id: string | null; site_engineer_id: string | null; technical_site_engineer_id: string | null;
   status: Status; difficulty: number | null;
   received_date: string | null; start_date: string | null; target_date: string | null; completed_date: string | null;
   signed_quote: number; notes: string | null; updated_at: string;
   quote_stage: QuoteStage; estimator_id: string | null; quoted_value: number | null; quote_submitted_date: string | null; quote_due_date: string | null; folder_path: string | null;
   quote_type: string | null; scope: string | null; waiting_on: string | null; raised_by: string | null;
   // from projects_live
-  contractor: string | null; pm: string | null; pm2: string | null; designer: string | null; estimator: string | null; days_since_enquiry: number | null;
+  contractor: string | null; pm: string | null; pm2: string | null; site_engineer: string | null; estimator: string | null; days_since_enquiry: number | null;
   project_value: number; vo_count: number; days_to_completion: number | null; duration_days: number | null; days_delayed: number | null; status_since: string | null;
 };
 export type Person = { id: string; name: string; full_name: string | null; role: string; email: string | null; whatsapp: string | null; is_active: boolean; can_edit_estimation: boolean; can_edit_projects: boolean; can_manage_team: boolean };
@@ -68,7 +68,7 @@ export function delayText(p: Pick<Project, "status" | "days_delayed">): string {
   return `${-d}d left`;
 }
 
-export const WAITING_ON = ["Client info", "Designer info", "Subcon quote", "Supplier quote", "Site survey", "Drawings", "Approvals", "Other"];
+export const WAITING_ON = ["Client info", "Drawings / design info", "Subcon quote", "Supplier quote", "Site survey", "Drawings", "Approvals", "Other"];
 export const SCOPES = ["Fit-out", "Renovation", "Joinery", "Landscaping", "MEP", "Furniture", "Other"];
 /** days until a quote is due: null = no date; amber within 3 days, red when overdue */
 export function dueTone(due: string | null) {

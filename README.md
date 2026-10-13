@@ -22,6 +22,12 @@ Exits from QUOTED: `ON_HOLD`, `REJECTED` (client dropped it), `LOST` (went elsew
 
 Same pattern as C5: triggers write significant changes to `scheduler.change_log`; pg_cron POSTs to `/api/notify` every 10 minutes; one quiet email per affected person via Resend from `scheduler@bolsovercontracting.com`. Editor isn't emailed about their own change; 3-minute hold; >7 days marked done unsent.
 
+## Where things are
+
+- Supabase: project `qmigtdpwzdmwnbmxewfm`, schema `scheduler` (see `db/README.md`)
+- Vercel: team `bolsover`, project `bolsover-scheduler`, root directory `app`
+- Resend: `scheduler@bolsovercontracting.com` (domain already verified)
+
 ## Status
 
-Session 1 (13 Oct 2026): register audited (`import/Bolsover-Scheduler_Audit_v1.md`), app re-pointed at the Bolsover pipeline and rebranded with a placeholder wordmark. DB schema, import, people list and design pass still to do. The `db/` folder currently holds the C5 migrations as reference — they will be replaced.
+Session 1 (13 Oct 2026): register audited (`import/Bolsover-Scheduler_Audit_v1.md`), app re-pointed at the Bolsover pipeline and rebranded with a placeholder wordmark. Schema applied to Supabase; Tom and Mye seeded (Mye manages the Team page). Import, remaining people, Vercel env vars and the design pass still to do.

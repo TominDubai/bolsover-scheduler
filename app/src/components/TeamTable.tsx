@@ -3,8 +3,8 @@ import { Fragment, useActionState, useState } from "react";
 import { title, type Person } from "@/lib/model";
 import { savePerson, addPerson } from "@/app/actions";
 
-const ROLE_LABEL: Record<string, string> = { PM: "Project manager", DESIGNER: "Designer", TECHNICAL_DESIGNER: "Technical designer", ESTIMATOR: "Estimator", MANAGEMENT: "Management", ADMIN: "Office / admin" };
-const ROLE_ORDER = ["MANAGEMENT", "PM", "DESIGNER", "TECHNICAL_DESIGNER", "ESTIMATOR", "ADMIN"];
+const ROLE_LABEL: Record<string, string> = { MANAGEMENT: "Management", PM: "Project manager", SITE: "Site engineer / supervisor", QS: "QS / estimator", ADMIN: "Office / admin" };
+const ROLE_ORDER = ["MANAGEMENT", "PM", "SITE", "QS", "ADMIN"];
 type State = { error?: string; ok?: boolean; at?: string } | null;
 
 function Row({ p, canEdit }: { p: Person; canEdit: boolean }) {

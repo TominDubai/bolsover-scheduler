@@ -10,8 +10,8 @@ const QUIET_MS = 3 * 60 * 1000;        // skip a project edited in the last 3 mi
 const MAX_AGE_MS = 7 * 24 * 3600 * 1000; // never email about something older than a week (e.g. a backlog after an outage)
 
 type Change = { id: number; project_id: string; kind: string; field: string | null; old_value: string | null; new_value: string | null; changed_by: string | null; changed_at: string };
-type Proj = { id: string; enquiry_no: string | null; name: string; client: string | null; status: Status; pm_id: string | null; pm2_id: string | null; designer_id: string | null; estimator_id: string | null };
-type Person = { id: string; name: string; full_name: string | null; email: string | null; is_active: boolean };
+type Proj = { id: string; enquiry_no: string | null; name: string; client: string | null; status: Status; pm_id: string | null; pm2_id: string | null; site_engineer_id: string | null; estimator_id: string | null };
+type Person = { id: string; name: string; full_name: string | null; email: string | null; is_active: boolean; role?: string };
 
 export function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,7 +22,7 @@ export function admin() {
 
 const FIELD: Record<string, string> = {
   name: "Project name", client: "Client", enquiry_no: "Enquiry no", status: "Status", quote_stage: "Quote stage",
-  pm_id: "PM", pm2_id: "Second PM", designer_id: "Designer", estimator_id: "Estimator", contractor_id: "Contractor",
+  pm_id: "PM", pm2_id: "Second PM", site_engineer_id: "Site engineer", estimator_id: "QS", contractor_id: "Contractor",
   start_date: "Start date", target_date: "Target completion", completed_date: "Completed date", quote_due_date: "Quote due",
   signed_quote: "Signed quote", quoted_value: "Quoted value",
 };
@@ -55,13 +55,13 @@ function describe(c: Change): string {
 }
 
 /** Who should hear about a change to this project (excluding whoever made it). */
-function recipients(p: Proj, changes: Change[], people: Map<string, Person>, aftab: Person | undefined): Person[] {
+function recipients(p: Proj, changes: Change[], people: Map<string, Person>, management: Person[]): Person[] {
   const ids = new Set<string>();
-  for (const id of [p.pm_id, p.pm2_id, p.designer_id]) if (id) ids.add(id);
+  for (const id of [p.pm_id, p.pm2_id, p.site_engineer_id]) if (id) ids.add(id);
   if (isQuote(p.status) && p.estimator_id) ids.add(p.estimator_id);
-  // a brand-new live project, or a quote turning into a project, also goes to Aftab
+  // a brand-new live project, or a quote being won, also goes to management
   const wonOrNew = changes.some((c) => (c.kind === "created" && !isQuote(p.status)) || (c.field === "status" && c.new_value === "WON"));
-  if (wonOrNew && aftab) ids.add(aftab.id);
+  if (wonOrNew) for (const m of management) ids.add(m.id);
   const actors = new Set(changes.map((c) => c.changed_by).filter(Boolean));
   // if every change in this batch came from one person, don't tell them about their own edits
   const soleActor = actors.size === 1 ? [...actors][0] : null;
@@ -90,7 +90,7 @@ function renderEmail(to: Person, groups: { p: Proj; changes: Change[] }[], peopl
       <div style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#8a7a5c;margin-bottom:6px">Bolsover Projects</div>
       <div style="font-size:15px;color:#2b2b2b;margin-bottom:18px">Hi ${esc(to.full_name?.split(" ")[0] ?? to.name)}, here's what changed on your projects.</div>
       ${sections}
-      <div style="font-size:12px;color:#9a9a9a;margin-top:8px">You get this because you're the PM, designer or estimator on these projects. Updates are grouped and sent at most every 10 minutes. <a href="${APP_URL}/board" style="color:#8a7a5c">Open the board</a></div>
+      <div style="font-size:12px;color:#9a9a9a;margin-top:8px">You get this because you're the PM, site engineer or QS on these projects. Updates are grouped and sent at most every 10 minutes. <a href="${APP_URL}/board" style="color:#8a7a5c">Open the board</a></div>
     </div></body></html>`;
 
   const text = groups.map(({ p, changes }) => `${p.enquiry_no ?? ""} ${p.name}\n${changes.map((c) => `  - ${describe(c)} (${who(c.changed_by)}, ${fmtTime(c.changed_at)})`).join("\n")}\n  ${APP_URL}/projects/${p.id}`).join("\n\n");
@@ -129,11 +129,11 @@ export async function runNotifications(opts: { dryRun?: boolean } = {}) {
   if (ready.length === 0) return { sent: 0, skipped: 0, pending, stale: stale.length };
 
   const [{ data: projs }, { data: ppl }] = await Promise.all([
-    db.from("projects").select("id, enquiry_no, name, client, status, pm_id, pm2_id, designer_id, estimator_id").in("id", ready.map(([id]) => id)),
-    db.from("people").select("id, name, full_name, email, is_active"),
+    db.from("projects").select("id, enquiry_no, name, client, status, pm_id, pm2_id, site_engineer_id, estimator_id").in("id", ready.map(([id]) => id)),
+    db.from("people").select("id, name, full_name, email, is_active, role"),
   ]);
   const people = new Map(((ppl ?? []) as Person[]).map((p) => [p.id, p]));
-  const aftab = [...people.values()].find((p) => p.name === "AFTAB");
+  const management = [...people.values()].filter((p) => p.role === "MANAGEMENT" && p.is_active);
   const projects = new Map(((projs ?? []) as Proj[]).map((p) => [p.id, p]));
 
   // fan out: recipient -> projects -> changes
@@ -143,7 +143,7 @@ export async function runNotifications(opts: { dryRun?: boolean } = {}) {
     const p = projects.get(pid);
     doneIds.push(...changes.map((c) => c.id));
     if (!p) continue; // project deleted since
-    const rs = recipients(p, changes, people, aftab);
+    const rs = recipients(p, changes, people, management);
     if (rs.length === 0) noRecipient++;
     for (const r of rs) perPerson.set(r.id, [...(perPerson.get(r.id) ?? []), { p, changes }]);
   }
