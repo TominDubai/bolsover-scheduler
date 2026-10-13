@@ -51,7 +51,9 @@ select:focus, input:focus, textarea:focus { outline: 2px solid var(--bronze); ou
 
 /* board */
 main { flex: 1; min-height: 0; display: flex; }
-.board { display: flex; gap: 16px; padding: 14px 24px 28px; overflow-x: auto; scroll-snap-type: x proximity; width: 100%; align-items: flex-start; }
+/* the board is one screen tall: columns scroll on their own, so the sideways scrollbar is always in view (shift+wheel also scrolls sideways) */
+.board { display: flex; gap: 16px; padding: 14px 24px 10px; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x proximity; width: 100%; align-items: stretch; height: calc(100dvh - 172px); min-height: 420px; box-sizing: border-box; }
+.board::-webkit-scrollbar { height: 12px; } .board::-webkit-scrollbar-thumb { background: var(--line2); border-radius: 6px; } .board::-webkit-scrollbar-track { background: var(--bg2); }
 .col { flex: 1 1 260px; min-width: 240px; max-width: 320px; scroll-snap-align: start; display: flex; flex-direction: column; border-radius: var(--r); transition: background .15s, flex-basis .15s; }
 /* nine stages don't fit side by side, so stages with nothing in them fold to a labelled strip (still a drop target) */
 .col.collapsed { flex: 0 0 44px; min-width: 44px; background: var(--bg2); border: 1px dashed var(--line2); }
@@ -65,7 +67,8 @@ main { flex: 1; min-height: 0; display: flex; }
 .col h2 { margin: 0; font: 800 15px var(--font); color: var(--navy); letter-spacing: -.01em; }
 .count { font: 700 12px var(--font); color: var(--fg2); background: var(--bg3); padding: 2px 9px; border-radius: 999px; }
 .colval { margin-left: auto; font: 700 12px var(--font); color: var(--bronze); }
-.cards { display: flex; flex-direction: column; gap: 10px; padding: 2px; min-height: 80px; }
+.cards { display: flex; flex-direction: column; gap: 10px; padding: 2px 6px 12px 2px; min-height: 80px; overflow-y: auto; flex: 1; min-height: 0; }
+.col { min-height: 0; }
 .empty { color: var(--fg3); font-size: 13px; text-align: center; padding: 24px 0; border: 1px dashed var(--line2); border-radius: var(--r); }
 .card { flex: none; display: block; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; cursor: pointer; box-shadow: 0 1px 2px rgba(16,44,82,.05); transition: box-shadow .15s, transform .15s; position: relative; overflow: hidden; }
 .card::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: var(--fg3); }
