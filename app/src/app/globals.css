@@ -179,3 +179,5 @@ dt { color: var(--fg3); font-size: 12px; font-weight: 700; padding-top: 2px; } d
 .team td.save { white-space: nowrap; } .team td.save form { display: flex; align-items: center; gap: 8px; }
 .team .check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; } .team .check input { width: auto; }
 .team tr.addrow td { background: var(--bg); border-top: 2px solid var(--line2); }
+
+.team td.perms { white-space: nowrap; } .team td.perms .check { margin-right: 10px; font-size: 12px; }

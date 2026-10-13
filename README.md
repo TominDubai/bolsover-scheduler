@@ -30,4 +30,4 @@ Same pattern as C5: triggers write significant changes to `scheduler.change_log`
 
 ## Status
 
-Session 1 (13 Oct 2026): register audited (`import/Bolsover-Scheduler_Audit_v1.md`), app re-pointed at the Bolsover pipeline and rebranded with a placeholder wordmark. Schema applied to Supabase; Tom and Mye seeded (Mye manages the Team page). Import, remaining people, Vercel env vars and the design pass still to do.
+Session 1 (13 Oct 2026): register audited (`import/Bolsover-Scheduler_Audit_v1.md`), app re-pointed at the Bolsover pipeline and rebranded with a placeholder wordmark. Live at bolsover-scheduler.vercel.app with the register imported (85 projects, 161 revisions, 26 VOs). Tom and Mye manage the team and permissions from the Team page. Still to do: design-direction pass, notifications/digest wiring (Resend key, service role, pg_cron), triage of the 59 QUOTED cards.

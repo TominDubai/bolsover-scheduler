@@ -157,9 +157,11 @@ const phone = (v: FormDataEntryValue | null) => { const s = nz(v)?.replace(/[\s\
 export async function savePerson(id: string, _prev: unknown, fd: FormData) {
   const supabase = await createClient();
   try {
-    const patch = { full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")), is_active: fd.get("is_active") === "on" };
+    const role = nz(fd.get("role")); if (role && !ROLES.includes(role)) return { error: "Pick a role." };
+    const patch = { full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")), is_active: fd.get("is_active") === "on",
+      ...(role ? { role } : {}), can_edit_estimation: fd.get("can_edit_estimation") === "on", can_edit_projects: fd.get("can_edit_projects") === "on", can_manage_team: fd.get("can_manage_team") === "on" };
     const { error } = await supabase.from("people").update(patch).eq("id", id);
-    if (error) return { error: error.message.includes("people_email_key") ? "Another person already has that email." : error.message };
+    if (error) return { error: error.message.includes("people_email_key") ? "Another person already has that email." : error.message.includes("own team permission") ? "You can't remove your own Team permission." : error.message };
   } catch (e) { return { error: (e as Error).message }; }
   revalidatePath("/team");
   return { ok: true, at: new Date().toISOString() };
@@ -172,7 +174,8 @@ export async function addPerson(_prev: unknown, fd: FormData) {
   if (!name) return { error: "Short name is required (the name shown on cards, e.g. BASIM)." };
   if (!ROLES.includes(role)) return { error: "Pick a role." };
   try {
-    const { error } = await supabase.from("people").insert({ name, role, full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")) });
+    const { error } = await supabase.from("people").insert({ name, role, full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")),
+      can_edit_estimation: fd.get("can_edit_estimation") === "on", can_edit_projects: fd.get("can_edit_projects") === "on", can_manage_team: fd.get("can_manage_team") === "on" });
     if (error) return { error: error.message.includes("people_name_key") ? `${name} already exists.` : error.message.includes("people_email_key") ? "Another person already has that email." : error.message };
   } catch (e) { return { error: (e as Error).message }; }
   revalidatePath("/team");

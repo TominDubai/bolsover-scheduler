@@ -13,7 +13,7 @@ function Row({ p, canEdit }: { p: Person; canEdit: boolean }) {
   const flags = [p.can_edit_projects && "projects", p.can_edit_estimation && "estimation", p.can_manage_team && "team"].filter(Boolean).join(" + ");
   if (!canEdit) return (
     <tr className={p.is_active ? "" : "off"}>
-      <td className="name">{title(p.name)}</td><td>{p.full_name ?? "—"}</td><td>{p.email ?? <i>no email</i>}</td><td>{p.whatsapp ?? "—"}</td><td><span className="pill">{flags || "view"}</span></td><td>{p.is_active ? "Active" : "Left"}</td><td />
+      <td className="name">{title(p.name)}</td><td>{p.full_name ?? "—"}</td><td>{p.email ?? <i>no email</i>}</td><td>{p.whatsapp ?? "—"}</td><td>{ROLE_LABEL[p.role]}</td><td><span className="pill">{flags || "view"}</span></td><td>{p.is_active ? "Active" : "Left"}</td><td />
     </tr>
   );
   return (
@@ -22,7 +22,12 @@ function Row({ p, canEdit }: { p: Person; canEdit: boolean }) {
       <td><input form={`f-${p.id}`} name="full_name" defaultValue={p.full_name ?? ""} placeholder="Full name" onChange={() => setDirty(true)} /></td>
       <td><input form={`f-${p.id}`} name="email" type="email" defaultValue={p.email ?? ""} placeholder="name@bolsovercontracting.com" onChange={() => setDirty(true)} className={p.email ? "" : "missing"} /></td>
       <td><input form={`f-${p.id}`} name="whatsapp" defaultValue={p.whatsapp ?? ""} placeholder="+9715…" onChange={() => setDirty(true)} /></td>
-      <td><span className="pill">{flags || "view"}</span></td>
+      <td><select form={`f-${p.id}`} name="role" defaultValue={p.role} onChange={() => setDirty(true)}>{ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></td>
+      <td className="perms">
+        <label className="check" title="Can add and edit quotes (Pending / Quoted)"><input form={`f-${p.id}`} type="checkbox" name="can_edit_estimation" defaultChecked={p.can_edit_estimation} onChange={() => setDirty(true)} /> Quotes</label>
+        <label className="check" title="Can edit projects from Won onwards, move cards, add VOs"><input form={`f-${p.id}`} type="checkbox" name="can_edit_projects" defaultChecked={p.can_edit_projects} onChange={() => setDirty(true)} /> Projects</label>
+        <label className="check" title="Can add people and set these permissions"><input form={`f-${p.id}`} type="checkbox" name="can_manage_team" defaultChecked={p.can_manage_team} onChange={() => setDirty(true)} /> Team</label>
+      </td>
       <td><label className="check"><input form={`f-${p.id}`} type="checkbox" name="is_active" defaultChecked={p.is_active} onChange={() => setDirty(true)} /> Active</label></td>
       <td className="save">
         <form id={`f-${p.id}`} action={action} onSubmit={() => setDirty(false)}>
@@ -44,7 +49,11 @@ function AddRow() {
       <td><input form="f-new" name="email" type="email" placeholder="name@bolsovercontracting.com" /></td>
       <td><input form="f-new" name="whatsapp" placeholder="+9715…" /></td>
       <td><select form="f-new" name="role" defaultValue="PM">{ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></td>
-      <td />
+      <td className="perms">
+        <label className="check"><input form="f-new" type="checkbox" name="can_edit_estimation" /> Quotes</label>
+        <label className="check"><input form="f-new" type="checkbox" name="can_edit_projects" /> Projects</label>
+        <label className="check"><input form="f-new" type="checkbox" name="can_manage_team" /> Team</label>
+      </td>
       <td className="save">
         <form id="f-new" action={action} key={state?.at}>
           <button className="btn sm" disabled={pending}>{pending ? "Adding…" : "+ Add"}</button>
@@ -62,11 +71,11 @@ export default function TeamTable({ people, canEdit }: { people: Person[]; canEd
     <div className="listview">
       <div className="tablewrap team">
         <table>
-          <thead><tr><th>Name</th><th>Full name</th><th>Email</th><th>WhatsApp</th><th>Can edit</th><th>Status</th><th /></tr></thead>
+          <thead><tr><th>Name</th><th>Full name</th><th>Email</th><th>WhatsApp</th><th>Role</th><th>Can edit</th><th>Status</th><th /></tr></thead>
           <tbody>
             {groups.map(([role, ps]) => (
               <Fragment key={role}>
-                <tr className="group"><td colSpan={7}>{ROLE_LABEL[role]}</td></tr>
+                <tr className="group"><td colSpan={8}>{ROLE_LABEL[role]}</td></tr>
                 {ps.map((p) => <Row key={p.id} p={p} canEdit={canEdit} />)}
               </Fragment>
             ))}
