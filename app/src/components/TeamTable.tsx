@@ -20,7 +20,7 @@ function Row({ p, canEdit }: { p: Person; canEdit: boolean }) {
     <tr className={p.is_active ? "" : "off"}>
       <td className="name">{title(p.name)}</td>
       <td><input form={`f-${p.id}`} name="full_name" defaultValue={p.full_name ?? ""} placeholder="Full name" onChange={() => setDirty(true)} /></td>
-      <td><input form={`f-${p.id}`} name="email" type="email" defaultValue={p.email ?? ""} placeholder="name@concept-5.com" onChange={() => setDirty(true)} className={p.email ? "" : "missing"} /></td>
+      <td><input form={`f-${p.id}`} name="email" type="email" defaultValue={p.email ?? ""} placeholder="name@bolsovercontracting.com" onChange={() => setDirty(true)} className={p.email ? "" : "missing"} /></td>
       <td><input form={`f-${p.id}`} name="whatsapp" defaultValue={p.whatsapp ?? ""} placeholder="+9715…" onChange={() => setDirty(true)} /></td>
       <td><span className="pill">{flags || "view"}</span></td>
       <td><label className="check"><input form={`f-${p.id}`} type="checkbox" name="is_active" defaultChecked={p.is_active} onChange={() => setDirty(true)} /> Active</label></td>
@@ -41,7 +41,7 @@ function AddRow() {
     <tr className="addrow">
       <td><input form="f-new" name="name" placeholder="SHORT NAME" required className="upper" /></td>
       <td><input form="f-new" name="full_name" placeholder="Full name" /></td>
-      <td><input form="f-new" name="email" type="email" placeholder="name@concept-5.com" /></td>
+      <td><input form="f-new" name="email" type="email" placeholder="name@bolsovercontracting.com" /></td>
       <td><input form="f-new" name="whatsapp" placeholder="+9715…" /></td>
       <td><select form="f-new" name="role" defaultValue="PM">{ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}</select></td>
       <td />
