@@ -52,7 +52,13 @@ select:focus, input:focus, textarea:focus { outline: 2px solid var(--bronze); ou
 /* board */
 main { flex: 1; min-height: 0; display: flex; }
 .board { display: flex; gap: 16px; padding: 14px 24px 28px; overflow-x: auto; scroll-snap-type: x proximity; width: 100%; align-items: flex-start; }
-.col { flex: 0 0 300px; scroll-snap-align: start; display: flex; flex-direction: column; border-radius: var(--r); transition: background .15s; }
+.col { flex: 1 1 260px; min-width: 240px; max-width: 320px; scroll-snap-align: start; display: flex; flex-direction: column; border-radius: var(--r); transition: background .15s, flex-basis .15s; }
+/* nine stages don't fit side by side, so stages with nothing in them fold to a labelled strip (still a drop target) */
+.col.collapsed { flex: 0 0 44px; min-width: 44px; background: var(--bg2); border: 1px dashed var(--line2); }
+.col.collapsed header { flex-direction: column; align-items: center; gap: 6px; padding: 12px 0; }
+.col.collapsed h2 { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 13px; color: var(--fg3); }
+.col.collapsed .colval, .col.collapsed .cards { display: none; }
+.col.collapsed .count { font-size: 11px; }
 .col.over { background: var(--bg3); }
 .col.side { opacity: .75; }
 .col header { display: flex; align-items: baseline; gap: 10px; padding: 6px 4px 10px; }

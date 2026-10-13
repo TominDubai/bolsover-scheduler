@@ -29,7 +29,7 @@ export default function Board({ projects, canEdit }: { projects: Project[]; canE
     const items = rows.filter((p) => p.status === k).sort((a, b) => (b.days_delayed ?? -9e9) - (a.days_delayed ?? -9e9));
     const val = items.reduce((s, p) => s + (p.project_value || 0), 0);
     return (
-      <section key={k} className={`col${k === "ON_HOLD" || k === "LOST" || k === "REJECTED" ? " side" : ""}${over === k ? " over" : ""}`}
+      <section key={k} className={`col${k === "ON_HOLD" || k === "LOST" || k === "REJECTED" ? " side" : ""}${over === k ? " over" : ""}${items.length === 0 && over !== k && dragId === null ? " collapsed" : ""}`}
         onDragOver={(e) => { e.preventDefault(); if (over !== k) setOver(k); }} onDragLeave={() => setOver(null)} onDrop={() => drop(k)}>
         <header><h2>{l}</h2><span className="count">{items.length}</span><span className="colval">{val ? aedS(val) : ""}</span></header>
         <div className="cards">
