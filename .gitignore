@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.env*.local
+*.png
+design/node_modules/
+design/package*.json
+
+!app/public/*.png
