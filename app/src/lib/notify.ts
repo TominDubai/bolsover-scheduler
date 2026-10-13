@@ -51,6 +51,7 @@ function describe(c: Change): string {
     case "vo_changed": return `${c.field} changed — ${vo(c.old_value)} → ${vo(c.new_value)}`;
     case "vo_removed": return `${c.field} removed — ${vo(c.old_value)}`;
     case "programme": return `Programme — ${c.field}: ${c.old_value ?? "—"} → ${c.new_value ?? "—"}`;
+    case "checkin": return `Weekly check-in: ${c.field === "ON_TRACK" ? "On track" : c.field === "SLIPPING" ? "Slipping" : "Blocked"}${c.new_value ? ` — ${c.new_value}` : ""}`;
     default: return `${FIELD[c.field ?? ""] ?? c.field}: ${value(c.field, c.old_value)} → ${value(c.field, c.new_value)}`;
   }
 }

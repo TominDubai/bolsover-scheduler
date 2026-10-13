@@ -35,9 +35,29 @@ export type Project = {
   // from projects_live
   contractor: string | null; pm: string | null; pm2: string | null; site_engineer: string | null; estimator: string | null; days_since_enquiry: number | null;
   project_value: number; vo_count: number; days_to_completion: number | null; duration_days: number | null; days_delayed: number | null; status_since: string | null;
+  // programme health + last PM check-in (null when no programme loaded / no check-in yet)
+  prog_pkgs: number | null; prog_done: number | null; prog_behind: number | null; prog_pct: number | null; prog_next_due: string | null; prog_forecast_end: string | null;
+  checkin_status: CheckinStatus | null; checkin_note: string | null; checkin_at: string | null; checkin_by: string | null;
 };
+export type CheckinStatus = "ON_TRACK" | "SLIPPING" | "BLOCKED";
+export const CHECKIN_LABEL: Record<CheckinStatus, string> = { ON_TRACK: "On track", SLIPPING: "Slipping", BLOCKED: "Blocked" };
+export type Checkin = { id: string; project_id: string; person_id: string | null; status: CheckinStatus; note: string | null; week_start: string; created_at: string; who?: { name: string } | null };
+
+/** Site health for a live project, from the programme and the PM's last check-in. */
+export function health(p: Pick<Project, "status" | "prog_pkgs" | "prog_behind" | "prog_done" | "prog_pct" | "checkin_status" | "checkin_at" | "prog_forecast_end" | "target_date">): { tone: Tone; text: string } | null {
+  if (p.status !== "LIVE" && p.status !== "PRE_MOB") return null;
+  const stale = p.checkin_at ? (Date.now() - new Date(p.checkin_at).getTime()) / 86400000 > 10 : true;
+  if (p.checkin_status === "BLOCKED" && !stale) return { tone: "crit", text: "Blocked" };
+  if (p.checkin_status === "SLIPPING" && !stale) return { tone: "warn", text: "Slipping" };
+  if (!p.prog_pkgs) return { tone: "none", text: "No programme" };
+  const behind = p.prog_behind ?? 0;
+  if (behind > 0) return { tone: behind >= 3 ? "crit" : "warn", text: `${behind} package${behind === 1 ? "" : "s"} behind` };
+  if (p.prog_forecast_end && p.target_date && p.prog_forecast_end > p.target_date) return { tone: "warn", text: "Forecast past target" };
+  if (p.checkin_status === "ON_TRACK" && !stale) return { tone: "ok", text: "On track" };
+  return { tone: "ok", text: `${p.prog_pct ?? 0}% · no check-in` };
+}
 export type Person = { id: string; name: string; full_name: string | null; role: string; email: string | null; whatsapp: string | null; is_active: boolean; can_edit_estimation: boolean; can_edit_projects: boolean; can_manage_team: boolean };
-export type Me = { name: string; canEstimation: boolean; canProjects: boolean; canTeam: boolean };
+export type Me = { id: string | null; name: string; canEstimation: boolean; canProjects: boolean; canTeam: boolean };
 export type Contractor = { id: string; name: string };
 export type Variation = { id: string; project_id: string; vo_no: number; description: string | null; value: number; approved_on: string | null };
 export type Package = {

@@ -5,20 +5,22 @@ import Failed from "@/components/Failed";
 import ProjectForm from "@/components/ProjectForm";
 import Variations from "@/components/Variations";
 import Programme from "@/components/Programme";
+import Checkin from "@/components/Checkin";
 import { getProject, getPeople, getContractors, getMe } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
-import { STAGES, ORDER, LABEL, aed, fmtD, title, tone, delayText, isQuote, type Variation, type History, type Package, type Activity } from "@/lib/model";
+import { STAGES, ORDER, LABEL, aed, fmtD, title, tone, delayText, isQuote, type Variation, type History, type Package, type Activity, type Checkin as CheckinRow } from "@/lib/model";
 
 export const dynamic = "force-dynamic";
 
 async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [p, people, contractors, me, { data: vos }, { data: hist }, { data: pkgs }] = await Promise.all([
+  const [p, people, contractors, me, { data: vos }, { data: hist }, { data: pkgs }, { data: cks }] = await Promise.all([
     getProject(id), getPeople(), getContractors(), getMe(),
     supabase.from("variations").select("*").eq("project_id", id).order("vo_no"),
     supabase.from("status_history").select("*, who:people(name)").eq("project_id", id).order("changed_at", { ascending: false }),
     supabase.from("programme_packages").select("*").eq("project_id", id).order("sort"),
+    supabase.from("checkins").select("*, who:people(name)").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
   ]);
   const packages = (pkgs ?? []) as Package[];
   const { data: acts } = packages.length
@@ -57,6 +59,9 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
           </div>
           <Variations projectId={p.id} signedQuote={p.signed_quote} vos={(vos ?? []) as Variation[]} canEdit={me.canProjects} />
         </div>
+        {(p.status === "LIVE" || p.status === "PRE_MOB") && (
+          <Checkin p={p} checkins={(cks ?? []) as CheckinRow[]} canPost={me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id)} myId={me.id} />
+        )}
         {(packages.length > 0 || ORDER[p.status] >= ORDER.WON) && ORDER[p.status] <= ORDER.COMPLETED && (
           <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects} />
         )}

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { STAGES, SIDE, aedS, fmtDShort, title, ini, tone, delayText, type Project, type Status } from "@/lib/model";
+import { STAGES, SIDE, aedS, fmtDShort, title, ini, tone, delayText, health, type Project, type Status } from "@/lib/model";
 import { setStatus } from "@/app/actions";
 
 export default function Board({ projects, canEdit }: { projects: Project[]; canEdit: boolean }) {
@@ -51,6 +51,7 @@ export default function Board({ projects, canEdit }: { projects: Project[]; canE
 function Card({ p, canEdit, dragging, onDragStart, onDragEnd }: { p: Project; canEdit: boolean; dragging: boolean; onDragStart: () => void; onDragEnd: () => void }) {
   const router = useRouter();
   const t = tone(p);
+  const h = health(p);
   return (
     <article className={`card ${t}${dragging ? " dragging" : ""}`} draggable={canEdit} onDragStart={onDragStart} onDragEnd={onDragEnd}
       tabIndex={0} role="link" onClick={() => router.push(`/projects/${p.id}`)} onKeyDown={(e) => e.key === "Enter" && router.push(`/projects/${p.id}`)}>
@@ -62,6 +63,7 @@ function Card({ p, canEdit, dragging, onDragStart, onDragEnd }: { p: Project; ca
         <span className="val">{p.project_value ? aedS(p.project_value) : "—"}</span>
       </div>
       <div className="dates"><span>Start {fmtDShort(p.start_date)}</span><span>Target {fmtDShort(p.target_date)}</span></div>
+      {h && <div className={`site ${h.tone}`}><span className={`dot ${h.tone}`} />{h.text}{p.prog_pkgs ? <small>{p.prog_done}/{p.prog_pkgs} · {p.prog_pct ?? 0}%</small> : null}</div>}
     </article>
   );
 }

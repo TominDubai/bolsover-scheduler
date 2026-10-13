@@ -200,3 +200,16 @@ export async function addPerson(_prev: unknown, fd: FormData) {
   revalidatePath("/team");
   return { ok: true, at: new Date().toISOString() };
 }
+
+// ---------- weekly check-in ----------
+export async function addCheckin(projectId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const status = nz(fd.get("status"));
+  if (!status || !["ON_TRACK", "SLIPPING", "BLOCKED"].includes(status)) return { error: "Pick On track, Slipping or Blocked." };
+  const note = nz(fd.get("note"));
+  if (status !== "ON_TRACK" && !note) return { error: "Add a line saying what's slipping or blocking — that's what the alert carries." };
+  const { error } = await supabase.from("checkins").insert({ project_id: projectId, status, note });
+  if (error) return { error: error.message.includes("row-level security") ? "Only the PM, second PM or site engineer on this project can check in." : error.message };
+  revalidatePath(`/projects/${projectId}`); revalidatePath("/board"); revalidatePath("/list");
+  return { ok: true };
+}

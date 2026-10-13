@@ -22,6 +22,13 @@ Exits from QUOTED: `ON_HOLD`, `REJECTED` (client dropped it), `LOST` (went elsew
 
 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `NOTIFY_SECRET` (same value as the `scheduler_notify_secret` entry in Supabase Vault). Env changes need a redeploy — an empty commit forces one.
 
+## Site progress (live projects)
+
+- **Programme** panel on the project page: packages from the P6 export with planned dates; PM/site records % complete, actual and forecast dates. Health is worked out from that (overdue, forecast late, should-have-started).
+- **Weekly check-in** panel: the PM, second PM or site engineer taps On track / Slipping / Blocked and adds a line. Logged to `checkins`.
+- **Board cards** on Live / Pre-mob show the site health line (packages behind, or the latest Slipping / Blocked).
+- **Alerts** (`/api/alerts`, daily 07:00 Dubai via pg_cron, `app/src/lib/alerts.ts`): Monday asks each PM for the check-in · Wednesday nudges PMs who haven't · Thursday escalates the missing ones to management · every day: packages behind → PM, and management when 3+ are behind or the forecast end is past the client target · a Slipping / Blocked check-in → management same day. Each rule fires once per project per person per 6 days (`alerts` table).
+
 ## Change notifications
 
 Same pattern as C5: triggers write significant changes to `scheduler.change_log`; pg_cron POSTs to `/api/notify` every 10 minutes; one quiet email per affected person via Resend from `scheduler@bolsovercontracting.com`. Editor isn't emailed about their own change; 3-minute hold; >7 days marked done unsent.

@@ -219,3 +219,18 @@ dt { color: var(--fg3); font-size: 12px; font-weight: 700; padding-top: 2px; } d
   .acts li { grid-template-columns: 1fr; gap: 0; } .acts code { display: none; }
 }
 .prog-form .field > span { font-size: 12px; font-weight: 700; color: var(--fg3); }
+
+/* site health on live cards */
+.card .site { display: flex; align-items: center; gap: 7px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); font: 600 12px var(--font); color: var(--fg2); }
+.card .site .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--fg3); flex: none; }
+.card .site small { margin-left: auto; color: var(--fg3); font-weight: 500; }
+.card .site.crit { color: var(--crit); } .card .site.warn { color: var(--warn); } .card .site.ok { color: var(--ok); }
+/* weekly check-in */
+.checkin-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.checkin-btns { display: flex; gap: 8px; }
+.btn.ok { background: var(--ok); color: #fff; border-color: var(--ok); } .btn.warn { background: var(--warn); color: #fff; border-color: var(--warn); } .btn.crit { background: var(--crit); color: #fff; border-color: var(--crit); }
+.checkin-form input { flex: 1; min-width: 240px; }
+.checkins { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.checkins li { display: grid; grid-template-columns: 90px 1fr auto; gap: 12px; align-items: baseline; font-size: 13px; }
+.checkins li small { color: var(--fg3); white-space: nowrap; }
+b.ok { color: var(--ok); } b.warn { color: var(--warn); } b.crit { color: var(--crit); }
