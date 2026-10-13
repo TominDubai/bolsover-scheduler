@@ -35,7 +35,7 @@ export default function Programme({ projectId, packages, activities, canEdit }: 
             <div key={k.id} className={`prog-pkg ${isOpen ? "open" : ""}`}>
               <button type="button" className="prog-row" onClick={() => setOpen(isOpen ? null : k.id)} aria-expanded={isOpen}>
                 <span className={`dot ${t.tone}`} />
-                <span className="pkg-name"><b>{title(k.name)}</b><small>{k.code} · {k.planned_days ?? "—"}d · {acts.length} activit{acts.length === 1 ? "y" : "ies"}</small></span>
+                <span className="pkg-name"><b>{title(k.name).replace(/\bMep\b/, "MEP").replace(/\bHvac\b/, "HVAC")}</b><small>{k.code} · {k.planned_days ?? "—"}d · {acts.length} activit{acts.length === 1 ? "y" : "ies"}</small></span>
                 <span className="dates">{fmtD(k.planned_start)} → {fmtD(k.planned_finish)}</span>
                 <span className="dates">{k.actual_start || k.actual_finish || k.forecast_finish ? <>{fmtD(k.actual_start)} → {k.actual_finish ? fmtD(k.actual_finish) : k.forecast_finish ? <i>{fmtD(k.forecast_finish)}</i> : "—"}</> : <i>—</i>}</span>
                 <span className="bar"><span style={{ width: `${k.pct_complete}%` }} className={t.tone} /><small>{k.pct_complete}%</small></span>
