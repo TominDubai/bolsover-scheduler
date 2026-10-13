@@ -46,7 +46,7 @@ export default function LoginForm() {
   );
   return (
     <form onSubmit={sendCode} className="form" style={{ gridTemplateColumns: "1fr" }}>
-      <div className="field"><label htmlFor="email">Work email</label><input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@concept-5.com" /></div>
+      <div className="field"><label htmlFor="email">Work email</label><input id="email" type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@bolsovercontracting.com" /></div>
       <div className="actions"><button className="btn" disabled={busy}>{busy ? "Sending…" : "Email me a code"}</button>{msg && <span className="msg err">{msg}</span>}</div>
     </form>
   );
