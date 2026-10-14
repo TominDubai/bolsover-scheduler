@@ -25,7 +25,8 @@ export default function Board({ projects, canEdit }: { projects: Project[]; canE
     });
   }
 
-  const cols = [...STAGES, ...SIDE].map(([k, l]) => {
+  // Pending / Quoted live on the Estimation tab; the board starts at Won.
+  const cols = [...STAGES.filter(([k]) => k !== "PENDING" && k !== "QUOTED"), ...SIDE].map(([k, l]) => {
     const items = rows.filter((p) => p.status === k).sort((a, b) => (b.days_delayed ?? -9e9) - (a.days_delayed ?? -9e9));
     const val = items.reduce((s, p) => s + (p.project_value || 0), 0);
     return (
