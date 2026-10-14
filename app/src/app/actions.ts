@@ -213,3 +213,148 @@ export async function addCheckin(projectId: string, _prev: unknown, fd: FormData
   revalidatePath(`/projects/${projectId}`); revalidatePath("/board"); revalidatePath("/list");
   return { ok: true };
 }
+
+// ---------- BOQ ----------
+const BOQ_STATUSES = ["DRAFT", "SUBMITTED", "APPROVED", "SUPERSEDED", "REJECTED"];
+const boqPaths = (projectId: string, boqId?: string) => { revalidatePath(`/projects/${projectId}`); if (boqId) revalidatePath(`/projects/${projectId}/boq/${boqId}`); revalidatePath(`/projects/${projectId}/progress`); revalidatePath("/board"); revalidatePath("/list"); };
+
+export async function setBoqStatus(projectId: string, boqId: string, status: string) {
+  if (!BOQ_STATUSES.includes(status)) return { error: "Unknown status." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("boqs").update({ status }).eq("id", boqId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  boqPaths(projectId, boqId);
+  return { ok: true };
+}
+
+export async function createBoq(projectId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const kind = nz(fd.get("kind")) === "VARIATION" ? "VARIATION" : "QUOTE";
+  const title = nz(fd.get("title"));
+  if (!title) return { error: "Give the bill a title." };
+  let variation_id: string | null = null;
+  let rev_no = 0;
+  if (kind === "VARIATION") {
+    const { data: last } = await supabase.from("variations").select("vo_no").eq("project_id", projectId).order("vo_no", { ascending: false }).limit(1);
+    const vo_no = (last?.[0]?.vo_no ?? 0) + 1;
+    const { data: v, error: ve } = await supabase.from("variations").insert({ project_id: projectId, vo_no, description: title, value: 0 }).select("id").single();
+    if (ve) return { error: ve.message };
+    variation_id = v.id;
+  } else {
+    const { data: last } = await supabase.from("boqs").select("rev_no").eq("project_id", projectId).eq("kind", "QUOTE").order("rev_no", { ascending: false }).limit(1);
+    rev_no = last?.length ? last[0].rev_no + 1 : 0;
+  }
+  const copyFrom = nz(fd.get("copy_from"));
+  const { data: b, error } = await supabase.from("boqs").insert({ project_id: projectId, kind, rev_no, variation_id, title, quote_ref: nz(fd.get("quote_ref")), issue_date: new Date().toISOString().slice(0, 10), payment_terms: "30% advance, 70% on progress" }).select("id").single();
+  if (error) return { error: error.message };
+  if (copyFrom) {
+    // new revision = copy of the previous one (sections + items, progress reset)
+    const { data: secs } = await supabase.from("boq_sections").select("*").eq("boq_id", copyFrom).order("sort");
+    const { data: its } = await supabase.from("boq_items").select("*").eq("boq_id", copyFrom).order("sort");
+    for (const s of secs ?? []) {
+      const { data: ns } = await supabase.from("boq_sections").insert({ boq_id: b.id, sort: s.sort, code: s.code, title: s.title, notes: s.notes }).select("id").single();
+      const rows = (its ?? []).filter((i) => i.section_id === s.id).map((i) => ({ boq_id: b.id, section_id: ns!.id, sort: i.sort, ref: i.ref, subheading: i.subheading, description: i.description, qty: i.qty, unit: i.unit, rate: i.rate, cost_rate: i.cost_rate, markup_pct: i.markup_pct, rate_item_id: i.rate_item_id, is_note: i.is_note, excluded: i.excluded, notes: i.notes }));
+      if (rows.length) await supabase.from("boq_items").insert(rows);
+    }
+  } else {
+    await supabase.from("boq_sections").insert({ boq_id: b.id, sort: 0, code: "I", title: "Preliminaries" });
+  }
+  boqPaths(projectId, b.id);
+  redirect(`/projects/${projectId}/boq/${b.id}`);
+}
+
+export async function addSection(projectId: string, boqId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const title = nz(fd.get("title")); if (!title) return { error: "Section needs a title." };
+  const { data: last } = await supabase.from("boq_sections").select("sort").eq("boq_id", boqId).order("sort", { ascending: false }).limit(1);
+  const sort = (last?.[0]?.sort ?? -1) + 1;
+  const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII", "XIX", "XX"];
+  const { error } = await supabase.from("boq_sections").insert({ boq_id: boqId, sort, code: nz(fd.get("code")) ?? ROMAN[sort] ?? String(sort + 1), title });
+  if (error) return { error: error.message };
+  boqPaths(projectId, boqId);
+  return { ok: true };
+}
+
+export async function saveItem(projectId: string, boqId: string, itemId: string | null, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const is_note = fd.get("is_note") === "on";
+  const rate = fd.has("rate") ? num(fd.get("rate")) : null;
+  const cost = fd.has("cost_rate") ? num(fd.get("cost_rate")) : null;
+  const patch: Record<string, unknown> = {
+    ref: nz(fd.get("ref")), subheading: nz(fd.get("subheading")), description: nz(fd.get("description")) ?? "",
+    qty: is_note ? null : num(fd.get("qty")), unit: nz(fd.get("unit")), rate: is_note ? null : rate,
+    is_note, excluded: fd.get("excluded") === "on", notes: nz(fd.get("notes")),
+  };
+  if (fd.has("cost_rate")) { patch.cost_rate = cost || null; patch.markup_pct = cost && rate ? Math.round(((rate / cost) - 1) * 10000) / 100 : nz(fd.get("markup_pct")) ? num(fd.get("markup_pct")) : null; }
+  if (!patch.description) return { error: "Description is required." };
+  if (itemId) {
+    const { error } = await supabase.from("boq_items").update(patch).eq("id", itemId).eq("boq_id", boqId);
+    if (error) return { error: error.message };
+  } else {
+    const section_id = nz(fd.get("section_id")); if (!section_id) return { error: "Pick a section." };
+    const { data: last } = await supabase.from("boq_items").select("sort").eq("section_id", section_id).order("sort", { ascending: false }).limit(1);
+    const { error } = await supabase.from("boq_items").insert({ ...patch, boq_id: boqId, section_id, sort: (last?.[0]?.sort ?? -1) + 1 });
+    if (error) return { error: error.message };
+  }
+  boqPaths(projectId, boqId);
+  return { ok: true, at: new Date().toISOString() };
+}
+
+export async function deleteItem(projectId: string, boqId: string, itemId: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("boq_items").delete().eq("id", itemId).eq("boq_id", boqId);
+  if (error) return { error: error.message };
+  boqPaths(projectId, boqId);
+  return { ok: true };
+}
+
+/** Site progress: installed % on one item (PM / site engineer of the project, or anyone who edits projects). */
+export async function setInstalled(projectId: string, itemId: string, pct: number) {
+  const supabase = await createClient();
+  const p = Math.max(0, Math.min(100, Math.round(pct)));
+  const { error } = await supabase.from("boq_items").update({ installed_pct: p }).eq("id", itemId);
+  if (error) return { error: error.message.includes("row-level security") ? "Only the PM or site engineer on this project can update progress." : error.message };
+  boqPaths(projectId);
+  return { ok: true, pct: p };
+}
+
+// ---------- valuations (Progress Billing Reports) ----------
+export async function createValuation(projectId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const period_to = nz(fd.get("period_to")) ?? new Date().toISOString().slice(0, 10);
+  const deposit_received = num(fd.get("deposit_received"));
+  const adjLabel = nz(fd.get("adj_label")); const adjAmount = num(fd.get("adj_amount"));
+  const { data: boqs } = await supabase.from("boqs").select("id, vat_pct").eq("project_id", projectId).eq("status", "APPROVED");
+  const ids = (boqs ?? []).map((b) => b.id);
+  if (ids.length === 0) return { error: "No approved BOQ on this project yet." };
+  const vat = Number(boqs?.[0]?.vat_pct ?? 5);
+  const { data: items } = await supabase.from("boq_items").select("id, amount, installed_pct, is_note, excluded").in("boq_id", ids);
+  const live = (items ?? []).filter((i) => !i.is_note && !i.excluded);
+  const contract_value = live.reduce((s, i) => s + Number(i.amount), 0);
+  const installed_value = live.reduce((s, i) => s + Number(i.amount) * Number(i.installed_pct) / 100, 0);
+  const { data: prev } = await supabase.from("valuations").select("no, installed_value").eq("project_id", projectId).order("no", { ascending: false }).limit(1);
+  const no = (prev?.[0]?.no ?? 0) + 1;
+  const prev_installed = Number(prev?.[0]?.installed_value ?? 0);
+  const { data: prevRow } = await supabase.from("valuations").select("period_to").eq("project_id", projectId).eq("no", no - 1).maybeSingle();
+  // Pao's method: progress is measured on the contract value inc VAT; the advance is recovered pro-rata to progress.
+  const grand = contract_value * (1 + vat / 100);
+  const thisPeriod = (installed_value - prev_installed) * (1 + vat / 100);
+  const deposit_recovery = grand > 0 ? deposit_received * (installed_value - prev_installed) / contract_value : 0;
+  const amount_due = thisPeriod + adjAmount - deposit_recovery;
+  const snapshot = { items: live.map((i) => ({ id: i.id, pct: Number(i.installed_pct), amount: Number(i.amount) })), adjustments: adjLabel ? [{ label: adjLabel, amount: adjAmount }] : [] };
+  const { data: v, error } = await supabase.from("valuations").insert({ project_id: projectId, no, period_from: prevRow?.period_to ?? null, period_to, issued_date: period_to, contract_value, installed_value, prev_installed, deposit_received, deposit_recovery, vat_pct: vat, amount_due, notes: nz(fd.get("notes")), snapshot }).select("id").single();
+  if (error) return { error: error.message };
+  revalidatePath(`/projects/${projectId}`);
+  redirect(`/projects/${projectId}/valuations/${v.id}`);
+}
+
+export async function setValuationStatus(projectId: string, id: string, status: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = { status };
+  if (status === "PAID") { patch.paid_amount = num(fd.get("paid_amount")) || null; patch.paid_date = nz(fd.get("paid_date")) ?? new Date().toISOString().slice(0, 10); }
+  if (fd.has("invoice_no")) patch.invoice_no = nz(fd.get("invoice_no"));
+  const { error } = await supabase.from("valuations").update(patch).eq("id", id).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  revalidatePath(`/projects/${projectId}`); revalidatePath(`/projects/${projectId}/valuations/${id}`);
+  return { ok: true };
+}
