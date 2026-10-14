@@ -358,3 +358,12 @@ export async function setValuationStatus(projectId: string, id: string, status: 
   revalidatePath(`/projects/${projectId}`); revalidatePath(`/projects/${projectId}/valuations/${id}`);
   return { ok: true };
 }
+
+// ---------- archive (completed jobs leave the board; they stay on the List under "Archived") ----------
+export async function archiveProject(id: string, archive: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc(archive ? "archive_project" : "unarchive_project", { p: id });
+  if (error) return { error: error.message };
+  revalidatePath("/board"); revalidatePath("/list"); revalidatePath(`/projects/${id}`);
+  return { ok: true };
+}

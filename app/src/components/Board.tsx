@@ -2,7 +2,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { STAGES, SIDE, aedS, fmtDShort, title, ini, tone, delayText, health, type Project, type Status } from "@/lib/model";
-import { setStatus } from "@/app/actions";
+import { setStatus, archiveProject } from "@/app/actions";
 
 export default function Board({ projects, canEdit }: { projects: Project[]; canEdit: boolean }) {
   const router = useRouter();
@@ -65,6 +65,9 @@ function Card({ p, canEdit, dragging, onDragStart, onDragEnd }: { p: Project; ca
       </div>
       <div className="dates"><span>Start {fmtDShort(p.start_date)}</span><span>Target {fmtDShort(p.target_date)}</span></div>
       {h && <div className={`site ${h.tone}`}><span className={`dot ${h.tone}`} />{h.text}{p.prog_pkgs ? <small>{p.prog_done}/{p.prog_pkgs} · {p.prog_pct ?? 0}%</small> : null}</div>}
+      {canEdit && p.status === "COMPLETED" && (
+        <button type="button" className="btn sm ghost archive" onClick={(e) => { e.stopPropagation(); archiveProject(p.id, true).then(() => router.refresh()); }}>Archive</button>
+      )}
     </article>
   );
 }

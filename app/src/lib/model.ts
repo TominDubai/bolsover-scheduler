@@ -29,7 +29,7 @@ export type Project = {
   contractor_id: string | null; pm_id: string | null; pm2_id: string | null; site_engineer_id: string | null; technical_site_engineer_id: string | null;
   status: Status; difficulty: number | null;
   received_date: string | null; start_date: string | null; target_date: string | null; completed_date: string | null;
-  signed_quote: number; notes: string | null; updated_at: string; location: string | null; job_ref: string | null;
+  signed_quote: number; notes: string | null; updated_at: string; location: string | null; job_ref: string | null; archived_at: string | null;
   quote_stage: QuoteStage; estimator_id: string | null; quoted_value: number | null; quote_submitted_date: string | null; quote_due_date: string | null; folder_path: string | null;
   quote_type: string | null; scope: string | null; waiting_on: string | null; raised_by: string | null;
   // from projects_live

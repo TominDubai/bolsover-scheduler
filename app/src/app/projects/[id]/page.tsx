@@ -7,6 +7,7 @@ import Variations from "@/components/Variations";
 import Programme from "@/components/Programme";
 import Checkin from "@/components/Checkin";
 import BoqPanel from "@/components/BoqPanel";
+import ArchiveBar from "@/components/ArchiveBar";
 import { getBoqSummaries, getContract, getValuations, canSeeCost } from "@/lib/boq";
 import { getProject, getPeople, getContractors, getMe } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
@@ -41,6 +42,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
           <div><h1>{title(p.name)}</h1><div className="client">{title(p.client)}{p.contractor ? ` · via ${p.contractor}` : ""}</div></div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span className={`status s-${p.status}`}>{LABEL[p.status]}</span><span className={`pill ${t}`}>{delayText(p)}</span></div>
         </div>
+        {(p.archived_at || p.status === "COMPLETED") && <ArchiveBar projectId={p.id} archivedAt={p.archived_at} canEdit={me.canProjects} />}
         <div>
           <div className="stagebar">{STAGES.map(([k]) => <span key={k} className={(ORDER[k] <= ORDER[p.status] && ORDER[p.status] <= ORDER.COMPLETED ? "on " : "") + (k === p.status ? "cur" : "")} />)}</div>
           <div className="stagebar-labels">{STAGES.map(([k, l]) => <span key={k}>{l}</span>)}</div>

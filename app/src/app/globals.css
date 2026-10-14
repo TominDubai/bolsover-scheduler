@@ -298,3 +298,7 @@ b.ok { color: var(--ok); } b.warn { color: var(--warn); } b.crit { color: var(--
 .print .summary { max-width: 520px; margin-top: 18px; } .print .soa { max-width: 620px; }
 .print .terms { margin-top: 22px; font-size: 11px; } .print .terms ul { padding-left: 18px; margin: 4px 0; }
 @media print { .noprint { display: none !important; } .print { padding: 0; max-width: none; } .print .pt tr.sec td { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { margin: 14mm; } }
+.card .archive { margin-top: 10px; width: 100%; justify-content: center; }
+.archivebar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border: 1px dashed var(--line2); border-radius: var(--r); font-size: 13px; color: var(--fg2); }
+.archivebar.on { background: var(--bg3); border-style: solid; }
+.tab.on { border-bottom-color: var(--navy); color: var(--navy); }

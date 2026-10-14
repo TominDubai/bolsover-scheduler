@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 async function Inner_BoardPage({ searchParams }: { searchParams: Promise<{ pm?: string; q?: string }> }) {
   const sp = await searchParams;
   const [all, me] = await Promise.all([getProjects(), getMe()]);
-  const rows = applyFilters(all, sp).filter((p) => p.status !== "PENDING" && p.status !== "QUOTED");
+  const rows = applyFilters(all, sp).filter((p) => p.status !== "PENDING" && p.status !== "QUOTED" && !p.archived_at);
   return (
     <Shell active="board" tools={<Suspense><Filters pms={pmCounts(all)} /></Suspense>}>
       <Summary projects={all} />

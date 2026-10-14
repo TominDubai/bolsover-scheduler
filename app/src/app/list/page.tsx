@@ -8,13 +8,13 @@ import { getProjects, pmCounts, applyFilters } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
 
-async function Inner_ListPage({ searchParams }: { searchParams: Promise<{ pm?: string; q?: string }> }) {
+async function Inner_ListPage({ searchParams }: { searchParams: Promise<{ pm?: string; q?: string; show?: string }> }) {
   const sp = await searchParams;
   const all = await getProjects();
   return (
-    <Shell active="list" tools={<Suspense><Filters pms={pmCounts(all)} /></Suspense>}>
+    <Shell active="list" tools={<Suspense><Filters pms={pmCounts(all)} archived={all.filter((p) => p.archived_at).length} /></Suspense>}>
       <Summary projects={all} />
-      <main><ListTable projects={applyFilters(all, sp)} /></main>
+      <main><ListTable projects={applyFilters(all, sp).filter((p) => sp.show === "archived" ? !!p.archived_at : !p.archived_at)} /></main>
     </Shell>
   );
 }
