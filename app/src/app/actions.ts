@@ -406,3 +406,20 @@ export async function setRateActive(id: string, active: boolean) {
   revalidatePath("/rates");
   return { ok: true };
 }
+
+// ---------- daily site report ----------
+export async function saveSiteReport(projectId: string, day: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const row = { project_id: projectId, day, done: nz(fd.get("done")), tomorrow: nz(fd.get("tomorrow")), issues: nz(fd.get("issues")) };
+  const { error } = await supabase.from("site_reports").upsert(row, { onConflict: "project_id,day" });
+  if (error) return { error: error.message.includes("row-level security") ? "Only the PM or site engineer on this project can write the report." : error.message };
+  revalidatePath(`/projects/${projectId}/report`); revalidatePath("/report");
+  return { ok: true, at: new Date().toISOString() };
+}
+
+export async function markReportSent(projectId: string, day: string) {
+  const supabase = await createClient();
+  await supabase.from("site_reports").upsert({ project_id: projectId, day, sent_at: new Date().toISOString() }, { onConflict: "project_id,day" });
+  revalidatePath(`/projects/${projectId}/report`); revalidatePath("/report");
+  return { ok: true };
+}

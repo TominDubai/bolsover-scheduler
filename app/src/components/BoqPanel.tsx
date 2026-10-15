@@ -56,10 +56,13 @@ export default function BoqPanel({ projectId, boqs, contract, valuations, canEdi
           </div>
         )
       )}
-      {contract.approved_boqs > 0 && isLive && (
+      {isLive && (
         <div className="boq-links">
-          <Link href={`/projects/${projectId}/progress`} className="btn sm bronze">Site progress</Link>
-          <Link href={`/projects/${projectId}/valuations`} className="btn sm ghost">Valuations{lastVal ? ` · no. ${lastVal.no} ${lastVal.status.toLowerCase()}` : ""}</Link>
+          <Link href={`/projects/${projectId}/report`} className="btn sm bronze">Daily report</Link>
+          {contract.approved_boqs > 0 && <>
+            <Link href={`/projects/${projectId}/progress`} className="btn sm bronze">Site progress</Link>
+            <Link href={`/projects/${projectId}/valuations`} className="btn sm ghost">Valuations{lastVal ? ` · no. ${lastVal.no} ${lastVal.status.toLowerCase()}` : ""}</Link>
+          </>}
         </div>
       )}
     </div>
