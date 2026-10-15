@@ -136,3 +136,66 @@ export async function runAlerts(opts: { dryRun?: boolean; force?: string } = {})
   }
   return { dow, week, sent, errors };
 }
+
+// ---------- 15:30 daily-report nudge ----------
+// One email per person listing their live sites with no daily report yet today (no notes saved and no
+// progress logged). Recorded as rule 'report_nudge' per project per person; one per person per day.
+export async function runReportNudge(opts: { dryRun?: boolean } = {}) {
+  const db = admin();
+  const today = dubai().toISOString().slice(0, 10);
+  const dayStart = new Date(`${today}T00:00:00+04:00`).toISOString();
+  const [{ data: projs }, { data: ppl }, { data: reps }, { data: prog }, { data: done }] = await Promise.all([
+    db.from("projects_live").select("id, enquiry_no, name, client, status, pm_id, pm2_id, site_engineer_id").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null),
+    db.from("people").select("id, name, full_name, email, is_active, role").eq("is_active", true),
+    db.from("site_reports").select("project_id, done, tomorrow, issues, sent_at").eq("day", today),
+    db.from("boq_progress").select("item_id, boq_items!inner(boq_id, boqs!inner(project_id))").gte("at", dayStart),
+    db.from("alerts").select("sent_to").eq("rule", "report_nudge").gte("sent_at", dayStart),
+  ]);
+  const people = new Map(((ppl ?? []) as Person[]).map((p) => [p.id, p]));
+  const reported = new Set<string>();
+  for (const r of (reps ?? []) as { project_id: string; done: string | null; tomorrow: string | null; issues: string | null; sent_at: string | null }[]) if (r.done || r.tomorrow || r.issues || r.sent_at) reported.add(r.project_id);
+  for (const x of (prog ?? []) as unknown as { boq_items: { boqs: { project_id: string } } }[]) reported.add(x.boq_items.boqs.project_id);
+  const alreadyNudged = new Set(((done ?? []) as { sent_to: string }[]).map((a) => a.sent_to));
+
+  const byPerson = new Map<string, { id: string; name: string }[]>();
+  for (const p of (projs ?? []) as Pick<Proj, "id" | "name" | "pm_id" | "pm2_id" | "site_engineer_id">[]) {
+    if (reported.has(p.id)) continue;
+    for (const id of [p.pm_id, p.pm2_id].filter(Boolean) as string[]) { if (!byPerson.has(id)) byPerson.set(id, []); byPerson.get(id)!.push({ id: p.id, name: p.name }); }
+  }
+  const planned: { to: Person; sites: { id: string; name: string }[] }[] = [];
+  for (const [id, sites] of byPerson) { const to = people.get(id); if (to?.email && !alreadyNudged.has(id)) planned.push({ to, sites }); }
+  if (opts.dryRun) return { today, planned: planned.map((x) => ({ to: x.to.email, sites: x.sites.map((s) => title(s.name)) })) };
+
+  let sent = 0; const errors: string[] = [];
+  for (const x of planned) {
+    const list = x.sites.map((s) => `<li><a href="${APP_URL}/projects/${s.id}/report" style="color:#1b2a41"><b>${esc(title(s.name))}</b></a></li>`).join("");
+    const html = wrap("Daily report not sent yet", `<p>Hi ${esc(title(x.to.name))}, it's 3:30 — ${x.sites.length === 1 ? "this site has" : "these sites have"} no daily report yet:</p><ul style="margin:8px 0 0;padding-left:18px">${list}</ul><p>Open the site, add your three lines (on site today / tomorrow / issues), tap <b>Open in WhatsApp</b> and send it to the project group. Two minutes.</p>`,
+      { href: x.sites.length === 1 ? `${APP_URL}/projects/${x.sites[0].id}/report` : `${APP_URL}/board`, label: x.sites.length === 1 ? "Write the report" : "Open the board" });
+    try {
+      await send(x.to.email as string, `Daily report: ${x.sites.map((s) => title(s.name)).join(", ")}`, html);
+      for (const s of x.sites) await db.from("alerts").insert({ rule: "report_nudge", project_id: s.id, sent_to: x.to.id, channel: "email" });
+      sent++;
+    } catch (e) { errors.push(`${x.to.email}: ${(e as Error).message}`); }
+  }
+  return { today, sent, errors };
+}
+
+// ---------- one-off announcement to everyone who owns a live site ----------
+export async function runAnnouncement(opts: { dryRun?: boolean; subject: string; html: string }) {
+  const db = admin();
+  const [{ data: projs }, { data: ppl }] = await Promise.all([
+    db.from("projects_live").select("id, pm_id, pm2_id, site_engineer_id").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null),
+    db.from("people").select("id, name, full_name, email, is_active, role").eq("is_active", true),
+  ]);
+  const people = new Map(((ppl ?? []) as Person[]).map((p) => [p.id, p]));
+  const ids = new Set<string>();
+  for (const p of (projs ?? []) as { pm_id: string | null; pm2_id: string | null; site_engineer_id: string | null }[]) for (const id of [p.pm_id, p.pm2_id, p.site_engineer_id]) if (id) ids.add(id);
+  const to = [...ids].map((id) => people.get(id)).filter((p): p is Person => !!p?.email);
+  if (opts.dryRun) return { to: to.map((p) => `${title(p.name)} <${p.email}>`) };
+  let sent = 0; const errors: string[] = [];
+  for (const p of to) {
+    try { await send(p.email as string, opts.subject, wrap(opts.subject, opts.html.replace(/\{name\}/g, esc(title(p.name))), { href: `${APP_URL}/board`, label: "Open Bolsover Projects" })); await db.from("alerts").insert({ rule: "announce", project_id: null, sent_to: p.id, channel: "email" }); sent++; }
+    catch (e) { errors.push(`${p.email}: ${(e as Error).message}`); }
+  }
+  return { sent, errors };
+}
