@@ -1,8 +1,7 @@
--- rates_fix_clipped.sql — full quote text for the 1,346 sweep-clipped rates (15 Oct 2026). Collision-safe, idempotent.
-set search_path = scheduler, public;
-create table if not exists rate_fix_stage (id uuid primary key, description text not null);
-truncate rate_fix_stage;
-insert into rate_fix_stage (id, description) values
+-- rates_fix_clipped.sql — full quote text for the 1,346 sweep-clipped rates (15 Oct 2026). Collision-safe, idempotent, schema-qualified.
+create table if not exists scheduler.rate_fix_stage (id uuid primary key, description text not null);
+truncate scheduler.rate_fix_stage;
+insert into scheduler.rate_fix_stage (id, description) values
 ('8ecedf8b-2560-4b1d-9796-2dddaa1b1908', 'Access Panels
 
 Supply and installation of 600 x 600 mm access panel with 12.5 mm gypsum plaster board (Non Fire rated)'),
@@ -663,7 +662,7 @@ Location: Entrance Lobby'),
 ('6ece83c2-8629-477f-a4d8-aeac22b32e29', 'G-G.D.04: Supply and install openable glass door for Grease Kitchen, size 1120 x 2800 mm (±).'),
 ('7fd1a236-e3cd-485e-8bb3-c250fb65039f', 'G-G.S.D.02: Supply and install sliding glass door for Entertainment Lounge, size 5050 x 3820 mm (±).'),
 ('fb5824e0-7cb2-4f87-95bf-8caaa6870c0d', 'G-G.S.D.03: Supply and install sliding glass door for Entertainment Lounge, size 3700 x 4980 mm (±).');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('d06eb7b7-7b2a-4730-88ba-6a6653bbee58', 'G-G.S.D.04: Supply and install sliding glass door for Dining-Buffet, size 5450 x 3820 mm (±).'),
 ('55607987-2a4a-40e3-a8ce-7a84a682fcf6', 'GF BEDROOM 01 : Supply and installation of door made of 45mm solid 
 beech wood frame with white oak wood veneer finish,10mm U channnel 
@@ -1593,7 +1592,7 @@ Notes:
 ('e2daf8c5-cf7c-487c-bd91-dbace8c310ac', 'Fixing of client-supplied Plumbing round brass angle valve, including alignment, connection to pre-installed piping, securing, and leak testing.
 
 Location: Master Bathroom, Bathroom 1 & 2');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('daac61fa-c2e6-4d67-83d0-cb5a553d73ec', 'Fixing of client-supplied WC, including alignment, securing to pre-installed wall bracket/concealed frame, connection to pre-installed plumbing lines, sealing, checking for proper flushing operation, and final finishing. 
 
 Location: Master Bathroom, Bathroom 1 & 2
@@ -2426,7 +2425,7 @@ Height: 100mm'),
 Drawing Code: WF-MT-01a
 Type: 304 1mm with Electro Plating Bronze Finished
 Location: Powder Room');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('b6554b88-3e9c-4247-8ebd-1dbda836793a', 'Supply and installation of 20 mm electro plating bronze finished metal skirting along wall perimeters, including cutting, edge treatment, fixing with adhesive and/or mechanical fasteners, alignment, joint finishing, and final cleaning.
 
 Drawing Code: SK-MT-01b
@@ -3504,7 +3503,7 @@ Material/Finish/Color: Solid Wood / Veneer
 Size: W260 x D50 cm 
 75H (Bottom)
 80H (Top)');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('eab8b210-223d-4f38-ae3a-4f3e110bd8fb', 'DESK:
 
 Ref Code: F11-01
@@ -4608,7 +4607,7 @@ Location: Walking Closet'),
 
 Size: 3000mm L x 2200mm HT x 600mm D
 Location: Bedroom 02');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('7eb1c8ca-6763-496d-be55-4e69e7affb99', 'Fabrication, Supply and Installation of Wooden Wall Partition
 
 Size: 2.5m HT x 1.0m L
@@ -5675,7 +5674,7 @@ Tiles will be supplied by the client.'),
 ('6549e6d6-d061-465b-b36e-0b44d5a1ac04', 'Site Inspection & Layout Marking:
 
 We will inspect the area and mark the walkway alignment and stepping stone positions as per approved landscape design.');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('42fbf9a1-31d4-4916-a6eb-dad24a7b9a73', 'Site Inspection & Layout Marking:
 
 We will inspect the site and mark the exact location and dimensions of the barbecue and sink counter as per approved design and client requirements.'),
@@ -6395,7 +6394,7 @@ Brand/Type: BagnoDesign - Studio 316
 Material Code: BDS-STU-705-WH
 Size: 400mm dia. X 145mm
 Finish: White');
-insert into rate_fix_stage (id, description) values
+insert into scheduler.rate_fix_stage (id, description) values
 ('e550950d-2cb1-4bdd-b60b-486f59326dbd', 'Supply and installation of deck mounted mixer including mixer unit, fixing accessories, flexible connections, connection to new hot and cold water supply lines, testing, commissioning.
 
 Brand: Bagno
@@ -7063,19 +7062,18 @@ Location: To Horizontal area'),
 Liquid applied Cementous waterproofing on concrete slab of wet areas prior to receive finishes all in accordance with the drawings and specifications.
 
 Location: To Vertical area');
--- Apply: where the full text already exists on another active row (same unit), merge into it instead of renaming.
 do $x$ declare r record; other uuid; begin
-  for r in select f.id, f.description, i.unit, i.use_count, i.last_used from rate_fix_stage f join rate_items i on i.id = f.id loop
-    select x.id into other from rate_items x where x.id <> r.id
+  for r in select f.id, f.description, i.unit, i.use_count, i.last_used from scheduler.rate_fix_stage f join scheduler.rate_items i on i.id = f.id loop
+    select x.id into other from scheduler.rate_items x where x.id <> r.id
       and lower(btrim(x.description)) = lower(btrim(r.description)) and lower(coalesce(x.unit,'')) = lower(coalesce(r.unit,'')) limit 1;
     if other is null then
-      update rate_items set description = r.description, notes = regexp_replace(coalesce(notes,''), '^clipped · ', '') where id = r.id;
+      update scheduler.rate_items set description = r.description, notes = regexp_replace(coalesce(notes,''), '^clipped · ', '') where id = r.id;
     else
-      update rate_items set use_count = use_count + r.use_count, last_used = greatest(last_used, r.last_used) where id = other;
-      update rate_items set is_active = false, notes = coalesce(notes,'') || ' · merged into ' || (select code from rate_items where id = other) where id = r.id;
+      update scheduler.rate_items set use_count = use_count + r.use_count, last_used = greatest(last_used, r.last_used) where id = other;
+      update scheduler.rate_items set is_active = false, notes = coalesce(notes,'') || ' · merged into ' || (select code from scheduler.rate_items where id = other) where id = r.id;
     end if;
   end loop;
 end $x$;
-update rate_items set is_active = false, notes = coalesce(notes,'') || ' · duplicate of a full-text entry' where id in ('02e92461-157b-44a3-abca-d4982d4a4162','2a967390-ecb8-442e-8758-a2b3018af237','7bfe0937-a73f-4a60-a975-7e0132e8c90f','88eed46f-411b-4225-9af1-ef1557f49e06','d773014f-ee8b-492e-8a58-e426e4a71bcb','0a479d6d-d5d4-4a8c-83dc-d06a60b32965','046fe344-88a9-47c4-b514-469ffa0f5680');
-drop table rate_fix_stage;
-select count(*) filter (where description like '%…') as still_clipped, count(*) filter (where not is_active) as retired from rate_items;
+update scheduler.rate_items set is_active = false, notes = coalesce(notes,'') || ' · duplicate of a full-text entry' where id in ('02e92461-157b-44a3-abca-d4982d4a4162','2a967390-ecb8-442e-8758-a2b3018af237','7bfe0937-a73f-4a60-a975-7e0132e8c90f','88eed46f-411b-4225-9af1-ef1557f49e06','d773014f-ee8b-492e-8a58-e426e4a71bcb','0a479d6d-d5d4-4a8c-83dc-d06a60b32965','046fe344-88a9-47c4-b514-469ffa0f5680');
+drop table scheduler.rate_fix_stage;
+select count(*) filter (where description like '%…') as still_clipped, count(*) filter (where not is_active) as retired from scheduler.rate_items;
