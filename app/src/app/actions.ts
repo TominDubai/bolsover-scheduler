@@ -285,6 +285,7 @@ export async function saveItem(projectId: string, boqId: string, itemId: string 
     qty: is_note ? null : num(fd.get("qty")), unit: nz(fd.get("unit")), rate: is_note ? null : rate,
     is_note, excluded: fd.get("excluded") === "on", notes: nz(fd.get("notes")),
   };
+  if (fd.has("rate_item_id")) patch.rate_item_id = nz(fd.get("rate_item_id"));
   if (fd.has("cost_rate")) { patch.cost_rate = cost || null; patch.markup_pct = cost && rate ? Math.round(((rate / cost) - 1) * 10000) / 100 : nz(fd.get("markup_pct")) ? num(fd.get("markup_pct")) : null; }
   if (!patch.description) return { error: "Description is required." };
   if (itemId) {
@@ -365,5 +366,43 @@ export async function archiveProject(id: string, archive: boolean) {
   const { error } = await supabase.rpc(archive ? "archive_project" : "unarchive_project", { p: id });
   if (error) return { error: error.message };
   revalidatePath("/board"); revalidatePath("/list"); revalidatePath(`/projects/${id}`);
+  return { ok: true };
+}
+
+// ---------- rate library ----------
+export type RateHit = { id: string; code: string | null; category: string; description: string; unit: string; cost_rate: number | null; sell_rate: number | null; markup_pct: number | null; use_count: number; last_used: string | null };
+
+/** Search the rate library for the item picker. Cost comes back only for people who can see cost. */
+export async function searchRates(q: string, showCost: boolean): Promise<RateHit[]> {
+  const supabase = await createClient();
+  const term = q.trim();
+  if (term.length < 2) return [];
+  const cols = "id, code, category, description, unit, sell_rate, markup_pct, use_count, last_used" + (showCost ? ", cost_rate" : "");
+  const { data } = await supabase.from("rate_items").select(cols).eq("is_active", true)
+    .or(`description.ilike.%${term.replace(/[%,()]/g, " ")}%,code.ilike.%${term.replace(/[%,()]/g, " ")}%,category.ilike.%${term.replace(/[%,()]/g, " ")}%`)
+    .order("use_count", { ascending: false }).limit(12);
+  return ((data ?? []) as unknown as RateHit[]).map((r) => ({ ...r, cost_rate: showCost ? r.cost_rate ?? null : null }));
+}
+
+export async function saveRate(id: string | null, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const sell = num(fd.get("sell_rate")) || null, cost = num(fd.get("cost_rate")) || null;
+  const patch = {
+    code: nz(fd.get("code")), category: nz(fd.get("category")) ?? "Misc", description: nz(fd.get("description")) ?? "", unit: nz(fd.get("unit")) ?? "Nos",
+    sell_rate: sell, cost_rate: cost, markup_pct: cost && sell ? Math.round((sell / cost - 1) * 10000) / 100 : null, notes: nz(fd.get("notes")),
+    is_active: fd.has("is_active") ? fd.get("is_active") === "on" : true,
+  };
+  if (!patch.description) return { error: "Description is required." };
+  const { error } = id ? await supabase.from("rate_items").update(patch).eq("id", id) : await supabase.from("rate_items").insert(patch);
+  if (error) return { error: error.code === "23505" ? "That description and unit is already in the library." : error.message };
+  revalidatePath("/rates");
+  return { ok: true };
+}
+
+export async function setRateActive(id: string, active: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("rate_items").update({ is_active: active }).eq("id", id);
+  if (error) return { error: error.message };
+  revalidatePath("/rates");
   return { ok: true };
 }

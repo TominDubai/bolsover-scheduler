@@ -1,8 +1,8 @@
 "use client";
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { aed2, pct, type Boq, type BoqItem, type BoqSection } from "@/lib/boq-model";
-import { addSection, saveItem, deleteItem, setInstalled } from "@/app/actions";
+import { addSection, saveItem, deleteItem, setInstalled, searchRates, type RateHit } from "@/app/actions";
 
 type Props = { projectId: string; boq: Boq; sections: BoqSection[]; items: BoqItem[]; canEdit: boolean; canProgress: boolean; showCost: boolean };
 
@@ -109,18 +109,24 @@ function ItemForm({ projectId, boqId, item, sectionId, showCost, cols, onDone }:
   const router = useRouter();
   const [state, action, pending] = useActionState(async (prev: unknown, fd: FormData) => { const r = await saveItem(projectId, boqId, item?.id ?? null, prev, fd); if (r.ok) { onDone(); router.refresh(); } return r; }, null as { error?: string; ok?: boolean } | null);
   const [, start] = useTransition();
+  // Library pick fills the fields below; the fields stay editable, so a picked rate is a starting point not a lock.
+  const [picked, setPicked] = useState<RateHit | null>(null);
+  const [v, setV] = useState({ description: item?.description ?? "", unit: item?.unit ?? "", rate: item?.rate?.toString() ?? "", cost_rate: item?.cost_rate?.toString() ?? "" });
+  const pick = (r: RateHit) => { setPicked(r); setV({ description: r.description, unit: r.unit, rate: r.sell_rate?.toString() ?? "", cost_rate: r.cost_rate?.toString() ?? "" }); };
   return (
     <tr className="iform"><td colSpan={cols}>
       <form action={action}>
         <input type="hidden" name="section_id" value={sectionId} />
+        <input type="hidden" name="rate_item_id" value={picked?.id ?? item?.rate_item_id ?? ""} />
+        <RatePicker showCost={showCost} onPick={pick} picked={picked} />
         <div className="iform-grid">
           <input name="ref" defaultValue={item?.ref ?? ""} placeholder="Ref (A.)" aria-label="Ref" />
           <input name="subheading" defaultValue={item?.subheading ?? ""} placeholder="Sub-heading (optional)" aria-label="Sub-heading" />
-          <textarea name="description" defaultValue={item?.description ?? ""} placeholder="Description" rows={3} required aria-label="Description" />
+          <textarea name="description" value={v.description} onChange={(e) => setV({ ...v, description: e.target.value })} placeholder="Description" rows={3} required aria-label="Description" />
           <input name="qty" inputMode="decimal" defaultValue={item?.qty ?? ""} placeholder="Qty" aria-label="Qty" />
-          <input name="unit" defaultValue={item?.unit ?? ""} placeholder="Unit" aria-label="Unit" list="units" />
-          <input name="rate" inputMode="decimal" defaultValue={item?.rate ?? ""} placeholder="Rate (ex VAT)" aria-label="Rate" />
-          {showCost && <input name="cost_rate" inputMode="decimal" defaultValue={item?.cost_rate ?? ""} placeholder="Supplier cost rate" aria-label="Cost rate" className="cost" />}
+          <input name="unit" value={v.unit} onChange={(e) => setV({ ...v, unit: e.target.value })} placeholder="Unit" aria-label="Unit" list="units" />
+          <input name="rate" inputMode="decimal" value={v.rate} onChange={(e) => setV({ ...v, rate: e.target.value })} placeholder="Rate (ex VAT)" aria-label="Rate" />
+          {showCost && <input name="cost_rate" inputMode="decimal" value={v.cost_rate} onChange={(e) => setV({ ...v, cost_rate: e.target.value })} placeholder="Supplier cost rate" aria-label="Cost rate" className="cost" />}
           <label className="chk"><input type="checkbox" name="is_note" defaultChecked={item?.is_note ?? false} /> Text only</label>
           <label className="chk"><input type="checkbox" name="excluded" defaultChecked={item?.excluded ?? false} /> Not in total</label>
           <input name="notes" defaultValue={item?.notes ?? ""} placeholder="Internal note" aria-label="Note" />
@@ -134,6 +140,37 @@ function ItemForm({ projectId, boqId, item, sectionId, showCost, cols, onDone }:
         {state?.error && <span className="msg err">{state.error}</span>}
       </form>
     </td></tr>
+  );
+}
+
+/** Type-ahead over the rate library. Picking one fills description / unit / rate (and cost for the pricing side). */
+export function RatePicker({ showCost, onPick, picked }: { showCost: boolean; onPick: (r: RateHit) => void; picked: RateHit | null }) {
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<RateHit[]>([]);
+  const [open, setOpen] = useState(false);
+  const t = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (t.current) clearTimeout(t.current);
+    if (q.trim().length < 2) { setHits([]); return; }
+    t.current = setTimeout(async () => { setHits(await searchRates(q, showCost)); setOpen(true); }, 180);
+    return () => { if (t.current) clearTimeout(t.current); };
+  }, [q, showCost]);
+  return (
+    <div className="rpick">
+      <input value={q} onChange={(e) => setQ(e.target.value)} onFocus={() => hits.length && setOpen(true)} onBlur={() => setTimeout(() => setOpen(false), 150)} placeholder="From library — type to search rates (e.g. demolition, wardrobe, tiling)" aria-label="Search rate library" />
+      {picked && <span className="rpicked"><b>{picked.code}</b> picked · {picked.unit} · {aed2(picked.sell_rate)}</span>}
+      {open && hits.length > 0 && (
+        <ul className="rhits" role="listbox">
+          {hits.map((r) => (
+            <li key={r.id} role="option" aria-selected={picked?.id === r.id} onMouseDown={(e) => { e.preventDefault(); onPick(r); setQ(""); setOpen(false); }}>
+              <span className="rc">{r.code}</span>
+              <span className="rd">{r.description.length > 110 ? r.description.slice(0, 110) + "…" : r.description}<small>{r.category}{r.use_count > 1 ? ` · used ${r.use_count}×` : ""}</small></span>
+              <span className="rn">{aed2(r.sell_rate)} / {r.unit}{showCost && r.cost_rate != null && <small className="cost">cost {aed2(r.cost_rate)}</small>}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

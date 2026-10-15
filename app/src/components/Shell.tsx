@@ -7,7 +7,7 @@ export function Monogram() {
   return <img className="mono" src="/bolsover-mark.svg" alt="Bolsover" width={34} height={34} />;
 }
 
-export default async function Shell({ active, children, tools }: { active?: "board" | "list" | "estimation" | "team"; children: React.ReactNode; tools?: React.ReactNode }) {
+export default async function Shell({ active, children, tools }: { active?: "board" | "list" | "estimation" | "rates" | "team"; children: React.ReactNode; tools?: React.ReactNode }) {
   const [user, me] = await Promise.all([getUser(), getMe().catch(() => ({ name: "", canEstimation: false, canProjects: false, canTeam: false }))]);
   return (
     <>
@@ -15,6 +15,7 @@ export default async function Shell({ active, children, tools }: { active?: "boa
         <Link href="/board" className="brand"><Monogram /><span className="wordmark">Bolsover</span><span className="sub">Projects 2026</span></Link>
         <nav className="tabs">
           <Link href="/estimation" className={"tab" + (active === "estimation" ? " on" : "")}>Estimation</Link>
+          <Link href="/rates" className={"tab" + (active === "rates" ? " on" : "")}>Rates</Link>
           <Link href="/board" className={"tab" + (active === "board" ? " on" : "")}>Board</Link>
           <Link href="/list" className={"tab" + (active === "list" ? " on" : "")}>List</Link>
           <Link href="/team" className={"tab" + (active === "team" ? " on" : "")}>Team</Link>

@@ -302,3 +302,27 @@ b.ok { color: var(--ok); } b.warn { color: var(--warn); } b.crit { color: var(--
 .archivebar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; border: 1px dashed var(--line2); border-radius: var(--r); font-size: 13px; color: var(--fg2); }
 .archivebar.on { background: var(--bg3); border-style: solid; }
 .tab.on { border-bottom-color: var(--navy); color: var(--navy); }
+
+/* rate library picker (item form) */
+.rpick { position: relative; margin-bottom: 8px; }
+.rpick input { width: 100%; border-radius: 8px; padding: 7px 10px; border: 1px dashed var(--line2); background: var(--bg2); }
+.rpick .rpicked { display: block; font-size: 12px; color: var(--fg2); margin-top: 4px; } .rpick .rpicked b { font-family: var(--mono); color: var(--navy); }
+.rhits { position: absolute; z-index: 5; left: 0; right: 0; top: 100%; margin: 4px 0 0; padding: 4px; list-style: none; background: #fff; border: 1px solid var(--line2); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); max-height: 320px; overflow: auto; }
+.rhits li { display: grid; grid-template-columns: 74px 1fr auto; gap: 10px; padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; align-items: start; }
+.rhits li:hover, .rhits li[aria-selected="true"] { background: var(--bg3); }
+.rhits .rc { font-family: var(--mono); font-size: 11px; color: var(--fg3); padding-top: 2px; } .rhits .rd small { display: block; color: var(--fg3); font-size: 11px; }
+.rhits .rn { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 700; } .rhits .rn small { display: block; font-weight: 400; font-size: 11px; }
+
+/* rates page */
+.ratest { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ratest th, .ratest td { padding: 7px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.ratest th { font-size: 11px; font-weight: 700; color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; background: var(--bg); position: sticky; top: 0; z-index: 1; }
+.ratest .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; } .ratest .rc { font-family: var(--mono); font-size: 12px; color: var(--fg3); white-space: nowrap; }
+.ratest tr.cat td { background: var(--navy); color: #fff; font-weight: 700; } .ratest tr.off td { color: var(--fg3); text-decoration: line-through; }
+.ratest .d { max-width: 620px; } .ratest .low { color: var(--crit); font-weight: 700; }
+.rform { display: grid; grid-template-columns: 90px 160px 1fr 80px 110px 110px auto; gap: 8px; align-items: center; } .rform textarea { grid-column: 1 / -1; border-radius: 10px; resize: vertical; }
+.rform input, .rform textarea { border-radius: 8px; padding: 6px 9px; }
+.rates-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 0 0 12px; } .rates-tools input { border-radius: 999px; padding: 8px 14px; min-width: 280px; }
+@media (max-width: 720px) { .rform { grid-template-columns: 1fr 1fr; } .rhits li { grid-template-columns: 1fr auto; } .rhits .rc { display: none; } }
+.rates-tools .chk { display: flex; gap: 6px; align-items: center; font-size: 12px; white-space: nowrap; }
+.stat.warn b { color: var(--warn); }
