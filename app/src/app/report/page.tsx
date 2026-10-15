@@ -2,7 +2,7 @@ import Link from "next/link";
 import Shell from "@/components/Shell";
 import Failed from "@/components/Failed";
 import DigestView from "@/components/DigestView";
-import { formatDigest, todayDubai } from "@/lib/report";
+import { formatDigest, todayDubai, hasNotes } from "@/lib/report";
 import { title } from "@/lib/model";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ async function Inner({ searchParams }: { searchParams: Promise<{ day?: string }>
   const { text, days } = await formatDigest(day);
   const prev = new Date(new Date(`${day}T12:00:00+04:00`).getTime() - 86400000).toISOString().slice(0, 10);
   const next = new Date(new Date(`${day}T12:00:00+04:00`).getTime() + 86400000).toISOString().slice(0, 10);
-  const reported = days.filter((d) => d.report || d.lines.length).length;
+  const reported = days.filter((d) => hasNotes(d.report) || d.lines.length).length;
   return (
     <Shell active="report">
       <section className="summary">
@@ -33,7 +33,7 @@ async function Inner({ searchParams }: { searchParams: Promise<{ day?: string }>
           </div>
           <DigestView text={text} />
           <ul className="dlist">
-            {days.map((d) => <li key={d.project.id}><Link href={`/projects/${d.project.id}/report?day=${day}`}>{title(d.project.name)}</Link><span className={d.report || d.lines.length ? "pill ok" : "pill"}>{d.report?.sent_at ? "sent" : d.report || d.lines.length ? "logged" : "nothing yet"}</span></li>)}
+            {days.map((d) => <li key={d.project.id}><Link href={`/projects/${d.project.id}/report?day=${day}`}>{title(d.project.name)}</Link><span className={hasNotes(d.report) || d.lines.length ? "pill ok" : "pill"}>{d.report?.sent_at ? "sent" : hasNotes(d.report) || d.lines.length ? "logged" : "nothing yet"}</span></li>)}
           </ul>
         </div>
       </main>

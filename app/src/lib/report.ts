@@ -6,6 +6,7 @@ import { getApprovedItems } from "@/lib/boq";
 
 export type SiteReport = { id: string; project_id: string; day: string; done: string | null; tomorrow: string | null; issues: string | null; by_id: string | null; sent_at: string | null };
 export type ProgressLine = { ref: string | null; description: string; section: string; from: number; to: number; amount: number; by: string | null };
+export const hasNotes = (r: SiteReport | null) => !!(r && (r.done || r.tomorrow || r.issues));
 export type ProjectDay = {
   project: Project; day: string; report: SiteReport | null;
   lines: ProgressLine[];                     // every item that moved on the day (collapsed to first → last)
@@ -119,7 +120,7 @@ export async function formatDigest(day: string): Promise<{ text: string; days: P
     out.push(bits.length ? bits.join(" · ") : "no update");
     if (d.report?.done) out.push(d.report.done.trim().split("\n")[0]);
     if (d.report?.issues) out.push(`⚠️ ${d.report.issues.trim().split("\n")[0]}`);
-    if (!d.report && !d.lines.length) out[out.length - 1] = "no report today";
+    if (!hasNotes(d.report) && !d.lines.length) out[out.length - 1] = "no report today";
     out.push("");
   }
   return { text: out.join("\n").trim(), days };
