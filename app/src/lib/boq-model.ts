@@ -8,7 +8,7 @@ export const BOQ_STATUS_TONE: Record<BoqStatus, string> = { DRAFT: "none", SUBMI
 export type Boq = {
   id: string; project_id: string; kind: BoqKind; rev_no: number; variation_id: string | null;
   title: string; quote_ref: string | null; status: BoqStatus; issue_date: string | null;
-  vat_pct: number; default_markup_pct: number; deposit_pct: number; working_days: number | null;
+  vat_pct: number; default_markup_pct: number; deposit_pct: number; discount: number; working_days: number | null;
   payment_terms: string | null; terms: string[] | null; notes: string | null; source_file: string | null;
   created_at: string; updated_at: string;
 };

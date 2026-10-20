@@ -26,7 +26,7 @@ export async function getBoq(id: string): Promise<{ boq: Boq; sections: BoqSecti
     supabase.from("boq_items").select("*").eq("boq_id", id).order("sort"),
   ]);
   return {
-    boq: numify(boq as Record<string, unknown>, ["vat_pct", "default_markup_pct", "deposit_pct", "rev_no"]) as unknown as Boq,
+    boq: numify(boq as Record<string, unknown>, ["vat_pct", "default_markup_pct", "deposit_pct", "discount", "rev_no"]) as unknown as Boq,
     sections: (sections ?? []) as BoqSection[],
     items: ((items ?? []) as Record<string, unknown>[]).map((i) => numify(i, ["qty", "rate", "cost_rate", "markup_pct", "amount", "cost_amount", "installed_pct", "sort"]) as unknown as BoqItem),
   };

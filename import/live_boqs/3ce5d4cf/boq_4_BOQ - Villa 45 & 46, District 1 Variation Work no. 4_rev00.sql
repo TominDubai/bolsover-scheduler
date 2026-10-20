@@ -1,0 +1,20 @@
+set search_path = scheduler, public;
+do $x$ declare b uuid; s uuid; v uuid; begin
+delete from boqs where project_id = '3ce5d4cf-aa9c-440a-826c-d6fedb0779d6' and source_file = 'BOQ - Villa 45 & 46, District 1 Variation Work no. 4_rev00.xlsx';
+insert into variations(project_id, vo_no, description, value) values ('3ce5d4cf-aa9c-440a-826c-d6fedb0779d6', 4, 'Villa 45 & 46, District 1 Variation Work no. 4_rev00', 0) on conflict (project_id, vo_no) do nothing;
+select id into v from variations where project_id = '3ce5d4cf-aa9c-440a-826c-d6fedb0779d6' and vo_no = 4;
+insert into boqs(project_id, kind, rev_no, variation_id, title, quote_ref, status, issue_date, working_days, terms, source_file, payment_terms) values ('3ce5d4cf-aa9c-440a-826c-d6fedb0779d6', 'VARIATION', 0, v, 'Villa 45 & 46, District 1 Variation Work no. 4_rev00', 'BBC/032026/00113_rev00', 'DRAFT', '2026-10-19', null, null, 'BOQ - Villa 45 & 46, District 1 Variation Work no. 4_rev00.xlsx', '30% advance, 70% on progress') returning id into b;
+insert into boq_sections(boq_id, sort, code, title) values (b, 0, 'A', 'Preliminaries') returning id into s;
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 0, null, null, 'Preparation, coordination, and procurement of all necessary approvals (authority submissions, revisions, and NOC) for this scopes at Villa 45 & 46, District 1, MBRC by Client.', null, null, null, null, null, true, false);
+insert into boq_sections(boq_id, sort, code, title) values (b, 1, 'B', 'Villa 45') returning id into s;
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 0, 'B1a.', 'B1. Basement', 'Supply and apply one coat primer on wall.', 439.53, 'sqm', 8.7546, 5.8364, 50.0, false, false);
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 1, 'B2a.', 'B2. Ground Floor', 'Supply and apply one coat primer on wall.', 280.5, 'sqm', 9.0, 6.0, 50.0, false, false);
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 2, 'B3a.', 'B3. First Floor', 'Supply and apply one coat primer on wall.', 413.4, 'sqm', 9.0, 6.0, 50.0, false, false);
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 3, 'B3a.', 'B3. Roof Floor', 'Supply and apply one coat primer on wall.', 148.4, 'sqm', 9.0, 6.0, 50.0, false, false);
+insert into boq_sections(boq_id, sort, code, title) values (b, 2, 'C', 'Villa 46') returning id into s;
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 0, 'C1a.', 'C1. Basement', 'Supply and apply one coat primer on wall.', 439.53, 'sqm', 8.7546, 5.8364, 50.0, false, false);
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 1, 'C2a.', 'B2. Ground Floor', 'Supply and apply one coat primer on wall.', 280.5, 'sqm', 9.0, 6.0, 50.0, false, false);
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 2, 'C3a.', 'B3. First Floor', 'Supply and apply one coat primer on wall.', 413.4, 'sqm', 9.0, 6.0, 50.0, false, false);
+insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 3, 'C3a.', 'B3. Roof Floor', 'Supply and apply one coat primer on wall.', 148.4, 'sqm', 9.0, 6.0, 50.0, false, false);
+update boqs set status = 'APPROVED' where id = b;
+end $x$;

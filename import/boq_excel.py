@@ -13,7 +13,7 @@ import sys, re, json, datetime, warnings
 warnings.filterwarnings("ignore")
 import openpyxl
 
-SECTION_RE = re.compile(r"^\s*([IVXLC]+)\.\s*(.+?)\s*$")
+SECTION_RE = re.compile(r"^\s*([IVXLC]+|[A-Z])\.\s*(.+?)\s*$", re.S)  # "II. Site Works" or "A. Preliminaries"
 TOTAL_RE = re.compile(r"^\s*(sub-?total|total)\b", re.I)
 
 
@@ -29,9 +29,9 @@ def num(v):
     return float(v) if isinstance(v, (int, float)) else None
 
 
-def parse(path):
+def parse(path, sheet=None):
     wb = openpyxl.load_workbook(path, data_only=True)
-    ws = wb["FINAL"] if "FINAL" in wb.sheetnames else wb.worksheets[0]
+    ws = wb[sheet] if sheet else (wb["FINAL"] if "FINAL" in wb.sheetnames else wb.worksheets[0])
     meta = {"file": path}
     for r in range(1, 24):
         a = cell(ws, r, 1)
@@ -72,18 +72,23 @@ def parse(path):
                     if t:
                         terms.append(t)
                     continue
-                if a in ("Total", "VAT (5%)", "Grand Total"):
+                if a in ("Total", "VAT (5%)", "Grand Total", "Discount", "Discounted Total"):
                     summary[a] = num(cell(ws, r, 9))
             continue
-        if isinstance(a, str) and a == "Summary":
+        if isinstance(a, str) and (a == "Summary" or a.startswith("Floor-Wise Breakdown")):
             done = True
+            continue
+        if isinstance(a, str) and a in ("Total", "Discount") and cur is not None and d is None and cell(ws, r, 9) is not None:
+            # no Summary block (Villa 45 rev08): the bare Total row ends the bill
+            done = True
+            summary[a] = num(cell(ws, r, 9))
             continue
         m = SECTION_RE.match(a) if isinstance(a, str) and d is None else None
         if m and not TOTAL_RE.match(a):
             # "I." alone (a stray repeated numeral) — skip
             if not m.group(2):
                 continue
-            cur = {"code": m.group(1), "title": m.group(2), "items": [], "total_row": None}
+            cur = {"code": m.group(1), "title": m.group(2).split("\n")[0].strip(" .:"), "items": [], "total_row": None}
             sections.append(cur)
             sub = None
             continue
@@ -135,14 +140,70 @@ def parse(path):
             item["is_note"] = True
             item["description"] += f" — {rate}"
             item["rate"] = None
+        elif isinstance(amt, str) and item["rate"] is not None:  # priced row dropped from the total, e.g. "Removed: To be done by Mandy"
+            item["excluded"] = True
+            item["description"] += f" — {amt.strip()}"
         cur["items"].append(item)
     meta["terms"] = terms
     meta["summary"] = summary
+    meta["reconciled"] = reconcile(sections)
     return {"meta": meta, "sections": sections}
 
 
+DEDUCT_RE = re.compile(r"\b(deduction|omission|omit|less)\b", re.I)
+
+
+def live_amount(it):
+    return 0 if it["is_note"] or it.get("excluded") else (it.get("amount") or 0)
+
+
+def reconcile(sections):
+    """Make each section add up to its sheet sub-total. Returns a list of notes describing what was changed.
+    Rules, in order: a section titled Deduction/Omission is all negative; a lone 'Less …' line is negative;
+    one row whose sign flip closes the gap; one or two rows the sheet silently left out of its sub-total."""
+    notes = []
+    for sec in sections:
+        if DEDUCT_RE.search(sec["title"]):
+            for it in sec["items"]:
+                if not it["is_note"] and (it.get("qty") or 0) > 0:
+                    it["qty"] = -it["qty"]; it["amount"] = -(it.get("amount") or 0)
+            notes.append(f"{sec['code']}. {sec['title']}: deduction section, quantities negated")
+        for it in sec["items"]:
+            if not it["is_note"] and it.get("ref") is None and DEDUCT_RE.search(it["description"]) and (it.get("qty") or 0) > 0:
+                it["qty"] = -it["qty"]; it["amount"] = -(it.get("amount") or 0)
+                notes.append(f"{sec['code']}: '{it['description'][:50]}' taken as a deduction")
+        tgt = sec.get("total_row")
+        if tgt is None or not sec["items"]:
+            continue
+        if DEDUCT_RE.search(sec["title"]) and tgt > 0:
+            tgt = -tgt
+        gap = round(sum(live_amount(i) for i in sec["items"]) - tgt, 2)
+        if abs(gap) < 0.05:
+            continue
+        live = [i for i in sec["items"] if not i["is_note"] and not i.get("excluded") and (i.get("amount") or 0)]
+        hit = [i for i in live if abs(2 * i["amount"] - gap) < 0.05]
+        if len(hit) == 1:
+            it = hit[0]; it["qty"] = -it["qty"]; it["amount"] = -it["amount"]
+            notes.append(f"{sec['code']}: '{it['description'][:50]}' sign flipped to match the sub-total")
+            continue
+        hit = [i for i in live if abs(i["amount"] - gap) < 0.05]
+        if len(hit) == 1:
+            it = hit[0]; it["excluded"] = True
+            notes.append(f"{sec['code']}: '{it['description'][:50]}' ({it['amount']:,.2f}) not in the sheet sub-total, marked excluded")
+            continue
+        pairs = [(a, b) for k, a in enumerate(live) for b in live[k + 1:] if abs(a["amount"] + b["amount"] - gap) < 0.05]
+        if len(pairs) == 1:
+            for it in pairs[0]:
+                it["excluded"] = True
+                notes.append(f"{sec['code']}: '{it['description'][:50]}' ({it['amount']:,.2f}) not in the sheet sub-total, marked excluded")
+            continue
+        notes.append(f"{sec['code']}. {sec['title']}: UNRESOLVED gap {gap:,.2f} vs sheet sub-total {tgt:,.2f}")
+    return notes
+
+
 if __name__ == "__main__":
-    out = parse(sys.argv[1])
+    sheet = sys.argv[sys.argv.index("--sheet") + 1] if "--sheet" in sys.argv else None
+    out = parse(sys.argv[1], sheet)
     if "--json" in sys.argv:
         print(json.dumps(out, indent=1, default=str))
     else:
@@ -150,7 +211,7 @@ if __name__ == "__main__":
         print(m.get("title"), "|", m.get("quote_ref"), "|", m.get("date"), "| client:", m.get("client"))
         tot = 0
         for s in out["sections"]:
-            st = sum((i.get("amount") or 0) for i in s["items"] if not i["is_note"])
+            st = sum((i.get("amount") or 0) for i in s["items"] if not i["is_note"] and not i.get("excluded"))
             tot += st
             flag = "" if s["total_row"] is None or abs(st - s["total_row"]) < 0.01 else f"  !! sheet says {s['total_row']}"
             print(f"  {s['code']:>4}. {s['title']:<40} {len(s['items']):3} items  {st:>14,.2f}{flag}")

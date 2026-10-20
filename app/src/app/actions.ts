@@ -227,6 +227,16 @@ export async function setBoqStatus(projectId: string, boqId: string, status: str
   return { ok: true };
 }
 
+/** Lump-sum discount under the bill total (ex VAT). Installed value scales with it — see boq_summary. */
+export async function setBoqDiscount(projectId: string, boqId: string, discount: number) {
+  if (!Number.isFinite(discount) || discount < 0) return { error: "Discount must be a positive amount." };
+  const supabase = await createClient();
+  const { error } = await supabase.from("boqs").update({ discount: Math.round(discount * 100) / 100 }).eq("id", boqId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  boqPaths(projectId, boqId);
+  return { ok: true };
+}
+
 export async function createBoq(projectId: string, _prev: unknown, fd: FormData) {
   const supabase = await createClient();
   const kind = nz(fd.get("kind")) === "VARIATION" ? "VARIATION" : "QUOTE";

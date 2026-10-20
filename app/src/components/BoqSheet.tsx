@@ -2,7 +2,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { aed2, pct, type Boq, type BoqItem, type BoqSection } from "@/lib/boq-model";
-import { addSection, saveItem, deleteItem, setInstalled, searchRates, type RateHit } from "@/app/actions";
+import { addSection, saveItem, deleteItem, setInstalled, setBoqDiscount, searchRates, type RateHit } from "@/app/actions";
 
 type Props = { projectId: string; boq: Boq; sections: BoqSection[]; items: BoqItem[]; canEdit: boolean; canProgress: boolean; showCost: boolean };
 
@@ -11,9 +11,11 @@ export default function BoqSheet({ projectId, boq, sections, items, canEdit, can
   const [editing, setEditing] = useState<string | null>(null);     // item id, or "new:<sectionId>"
   const [addingSection, setAddingSection] = useState(false);
   const live = items.filter((i) => !i.is_note && !i.excluded);
-  const total = live.reduce((s, i) => s + i.amount, 0);
+  const gross = live.reduce((s, i) => s + i.amount, 0);
+  const discount = boq.discount || 0;
+  const total = gross - discount;                                   // the contract value: items less any lump-sum discount
   const cost = live.reduce((s, i) => s + i.cost_amount, 0);
-  const installed = live.reduce((s, i) => s + i.amount * i.installed_pct / 100, 0);
+  const installed = live.reduce((s, i) => s + i.amount * i.installed_pct / 100, 0) * (gross ? total / gross : 1);
   const vat = total * boq.vat_pct / 100;
   const approved = boq.status === "APPROVED";
   const cols = 6 + (showCost ? 3 : 0) + (approved ? 1 : 0) + (canEdit ? 1 : 0);
@@ -77,6 +79,12 @@ export default function BoqSheet({ projectId, boq, sections, items, canEdit, can
             <tr><td colSpan={cols}>
               {addingSection ? <SectionForm projectId={projectId} boqId={boq.id} onDone={() => setAddingSection(false)} /> : <button className="btn sm ghost" onClick={() => setAddingSection(true)}>+ section</button>}
             </td></tr>
+          )}
+          {(discount > 0 || canEdit) && (
+            <tr><td colSpan={5}>Items{discount > 0 ? "" : " (no discount)"}</td><td className="n amt">{aed2(gross)}</td>{showCost && <td colSpan={3} />}{approved && <td />}{canEdit && <td />}</tr>
+          )}
+          {(discount > 0 || canEdit) && (
+            <tr><td colSpan={5}>Discount{canEdit && <DiscountEdit projectId={projectId} boqId={boq.id} value={discount} />}</td><td className="n amt">{discount > 0 ? `− ${aed2(discount)}` : "—"}</td>{showCost && <td colSpan={3} />}{approved && <td />}{canEdit && <td />}</tr>
           )}
           <tr className="grand"><td colSpan={5}>Total (ex VAT)</td><td className="n amt">{aed2(total)}</td>
             {showCost && <><td /><td className="n cost">{aed2(cost)}</td><td className={`n cost ${total && (total - cost) / total < 0.15 ? "low" : ""}`}>{total ? `${Math.round((total - cost) / total * 100)}%` : ""}</td></>}
@@ -184,5 +192,21 @@ function SectionForm({ projectId, boqId, onDone }: { projectId: string; boqId: s
       <span style={{ display: "flex", gap: 6 }}><button className="btn sm" disabled={pending}>Add section</button><button type="button" className="btn sm ghost" onClick={onDone}>Cancel</button></span>
       {state?.error && <span className="msg err">{state.error}</span>}
     </form>
+  );
+}
+
+/** Inline editor for the lump-sum discount — a small input next to the label, saved on blur / Enter. */
+function DiscountEdit({ projectId, boqId, value }: { projectId: string; boqId: string; value: number }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [v, setV] = useState(value ? String(value) : "");
+  const save = () => {
+    const n = v.trim() === "" ? 0 : Number(v.replace(/,/g, ""));
+    if (!Number.isFinite(n) || n === value) return;
+    start(async () => { const r = await setBoqDiscount(projectId, boqId, n); if (r?.error) alert(r.error); else router.refresh(); });
+  };
+  return (
+    <input className="inp sm disc" type="text" inputMode="decimal" placeholder="0.00" value={v} disabled={pending}
+      onChange={(e) => setV(e.target.value)} onBlur={save} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
   );
 }

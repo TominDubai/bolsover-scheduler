@@ -12,7 +12,9 @@ export default async function Print({ params }: { params: Promise<{ id: string; 
   const [p, b] = await Promise.all([getProject(id), getBoq(boqId)]);
   if (!p || !b || b.boq.project_id !== id) notFound();
   const live = b.items.filter((i) => !i.is_note && !i.excluded);
-  const total = live.reduce((s, i) => s + i.amount, 0);
+  const gross = live.reduce((s, i) => s + i.amount, 0);
+  const discount = b.boq.discount || 0;
+  const total = gross - discount;
   const vat = total * b.boq.vat_pct / 100;
   const sectionTotals = b.sections.map((s) => ({ s, t: live.filter((i) => i.section_id === s.id).reduce((a, i) => a + i.amount, 0) }));
   return (
@@ -63,7 +65,9 @@ export default async function Print({ params }: { params: Promise<{ id: string; 
         <thead><tr><th colSpan={2}>Summary</th><th className="n">AED</th></tr></thead>
         <tbody>
           {sectionTotals.map(({ s, t }) => <tr key={s.id}><td className="ref">{s.code}</td><td>{s.title}</td><td className="n">{aed2(t)}</td></tr>)}
-          <tr className="tot"><td colSpan={2}>Total</td><td className="n">{aed2(total)}</td></tr>
+          {discount > 0 && <tr className="tot"><td colSpan={2}>Total</td><td className="n">{aed2(gross)}</td></tr>}
+          {discount > 0 && <tr><td colSpan={2}>Discount</td><td className="n">− {aed2(discount)}</td></tr>}
+          <tr className="tot"><td colSpan={2}>{discount > 0 ? "Discounted Total" : "Total"}</td><td className="n">{aed2(total)}</td></tr>
           <tr><td colSpan={2}>VAT ({b.boq.vat_pct}%)</td><td className="n">{aed2(vat)}</td></tr>
           <tr className="grand"><td colSpan={2}>Grand Total</td><td className="n">{aed2(total + vat)}</td></tr>
         </tbody>
