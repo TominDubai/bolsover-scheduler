@@ -348,9 +348,9 @@ b.ok { color: var(--ok); } b.warn { color: var(--warn); } b.crit { color: var(--
 .pthumb input.cap { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); width: 100%; }
 .pthumb figcaption { font-size: 12px; color: var(--fg2); } .pthumb small { font-size: 11px; color: var(--fg3); display: flex; justify-content: space-between; align-items: center; }
 .pthumb small .x { border: 0; background: none; color: var(--fg3); font-size: 16px; line-height: 1; cursor: pointer; padding: 0 2px; } .pthumb small .x:hover { color: var(--bad, #c0392b); }
-.gallery { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+main.gallery { display: block; flex: initial; width: 100%; max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; box-sizing: border-box; }
 .gallery header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; } .gallery h1 { font-size: 20px; margin: 0; } .gallery header p { margin: 2px 0 0; color: var(--fg3); font-size: 13px; }
 .gallery .ggrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.gallery figure { margin: 0; } .gallery figure img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; background: var(--bg); display: block; }
+.gallery figure { margin: 0; min-width: 0; } .gallery figure img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; background: var(--bg); display: block; }
 .gallery figcaption { font-size: 13px; color: var(--fg2); margin-top: 6px; } .gallery .empty { color: var(--fg3); }
 .gallery footer { margin-top: 28px; font-size: 12px; color: var(--fg3); }
