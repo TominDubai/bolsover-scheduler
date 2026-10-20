@@ -5,6 +5,8 @@ import Failed from "@/components/Failed";
 import ProgressSheet from "@/components/ProgressSheet";
 import { getProject, getMe } from "@/lib/data";
 import { getApprovedItems } from "@/lib/boq";
+import { getItemPhotoCounts } from "@/lib/photos";
+import { todayDubai } from "@/lib/report";
 import { title } from "@/lib/model";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +14,7 @@ export const dynamic = "force-dynamic";
 /** Phone-first: the PM walks the site and sets installed % per item across the approved bill and VOs. */
 async function Inner({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [p, me, a] = await Promise.all([getProject(id), getMe(), getApprovedItems(id)]);
+  const [p, me, a, photoCounts] = await Promise.all([getProject(id), getMe(), getApprovedItems(id), getItemPhotoCounts(id)]);
   if (!p) notFound();
   const canProgress = me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id);
   return (
@@ -21,7 +23,7 @@ async function Inner({ params }: { params: Promise<{ id: string }> }) {
         <div className="crumbs"><Link href="/board">Board</Link> / <Link href={`/projects/${id}`}>{p.enquiry_no ?? title(p.name)}</Link> / <span className="enq">Site progress</span></div>
         <div className="head"><div><h1>{title(p.name)}</h1><div className="client">Installed progress per item · tap a value, type the %, it saves on its own</div></div></div>
         {a.boqs.length === 0 ? <div className="panel"><span className="note">No approved bill on this project yet.</span></div>
-          : <ProgressSheet projectId={id} boqs={a.boqs} sections={a.sections} items={a.items} canProgress={canProgress} />}
+          : <ProgressSheet projectId={id} boqs={a.boqs} sections={a.sections} items={a.items} canProgress={canProgress} day={todayDubai()} photoCounts={photoCounts} />}
       </div>
     </Shell>
   );

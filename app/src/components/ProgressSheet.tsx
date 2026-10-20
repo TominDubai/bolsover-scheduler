@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import { aed } from "@/lib/model";
 import { pct, type Boq, type BoqItem, type BoqSection } from "@/lib/boq-model";
 import { setInstalled } from "@/app/actions";
+import PhotoButton from "@/components/PhotoButton";
 
-type Props = { projectId: string; boqs: (Boq & { vo_no?: number | null })[]; sections: BoqSection[]; items: BoqItem[]; canProgress: boolean };
+type Props = { projectId: string; boqs: (Boq & { vo_no?: number | null })[]; sections: BoqSection[]; items: BoqItem[]; canProgress: boolean; day: string; photoCounts: Record<string, number> };
 const STEPS = [0, 25, 50, 75, 100];
 
-export default function ProgressSheet({ projectId, boqs, sections, items, canProgress }: Props) {
+export default function ProgressSheet({ projectId, boqs, sections, items, canProgress, day, photoCounts }: Props) {
   const [vals, setVals] = useState<Record<string, number>>(Object.fromEntries(items.map((i) => [i.id, i.installed_pct])));
   const [open, setOpen] = useState<string | null>(null);
   const live = items.filter((i) => !i.is_note && !i.excluded);
@@ -36,7 +37,7 @@ export default function ProgressSheet({ projectId, boqs, sections, items, canPro
                   <span className="pname"><b>{s.code}. {s.title}</b><small>{its.length} items · {aed(st)}</small></span>
                   <span className="bar"><span style={{ width: `${st ? si / st * 100 : 0}%` }} className={si >= st ? "done" : "ok"} /><small>{st ? Math.round(si / st * 100) : 0}%</small></span>
                 </button>
-                {isOpen && its.map((i) => <Row key={i.id} projectId={projectId} item={i} val={vals[i.id] ?? 0} canProgress={canProgress} onChange={(v) => setVals((x) => ({ ...x, [i.id]: v }))} />)}
+                {isOpen && its.map((i) => <Row key={i.id} projectId={projectId} day={day} photos={photoCounts[i.id] ?? 0} item={i} val={vals[i.id] ?? 0} canProgress={canProgress} onChange={(v) => setVals((x) => ({ ...x, [i.id]: v }))} />)}
               </div>
             );
           })}
@@ -46,7 +47,7 @@ export default function ProgressSheet({ projectId, boqs, sections, items, canPro
   );
 }
 
-function Row({ projectId, item, val, canProgress, onChange }: { projectId: string; item: BoqItem; val: number; canProgress: boolean; onChange: (v: number) => void }) {
+function Row({ projectId, day, photos, item, val, canProgress, onChange }: { projectId: string; day: string; photos: number; item: BoqItem; val: number; canProgress: boolean; onChange: (v: number) => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [err, setErr] = useState<string | null>(null);
@@ -58,6 +59,7 @@ function Row({ projectId, item, val, canProgress, onChange }: { projectId: strin
         <span className="psteps">
           {STEPS.map((s) => <button key={s} type="button" className={val === s ? "on" : ""} onClick={() => save(s)} disabled={pending}>{s}</button>)}
           <input type="number" min={0} max={100} step={5} value={val} onChange={(e) => onChange(Number(e.target.value))} onBlur={(e) => Number(e.target.value) !== item.installed_pct && save(Number(e.target.value))} aria-label="Installed %" />
+          <PhotoButton projectId={projectId} day={day} itemId={item.id} small label={photos ? `${photos} photo${photos === 1 ? "" : "s"} — add another` : "Add photo"} />{photos > 0 && <small className="pcount">{photos}</small>}
         </span>
       ) : <span className="ipct">{pct(val)}</span>}
       {err && <span className="msg err">{err}</span>}

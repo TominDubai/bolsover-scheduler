@@ -433,3 +433,38 @@ export async function markReportSent(projectId: string, day: string) {
   revalidatePath(`/projects/${projectId}/report`); revalidatePath("/report");
   return { ok: true };
 }
+
+// ---------- site photos ----------
+const photoPaths = (projectId: string) => { revalidatePath(`/projects/${projectId}/report`); revalidatePath(`/projects/${projectId}/progress`); revalidatePath("/report"); };
+
+/** The browser has already put the file in Storage; this records it. RLS limits it to the project's PM / site engineer / Projects permission. */
+export async function recordPhoto(projectId: string, day: string, path: string, itemId: string | null, caption: string | null) {
+  if (!path.startsWith(`${projectId}/`)) return { error: "Bad photo path." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("site_photos").insert({ project_id: projectId, day, path, item_id: itemId, caption }).select("id").single();
+  if (error) {
+    await supabase.storage.from("site-photos").remove([path]);   // don't leave an orphan file behind
+    return { error: error.message.includes("row-level security") ? "Only the PM or site engineer on this project can add photos." : error.message };
+  }
+  photoPaths(projectId);
+  return { ok: true, id: data.id as string };
+}
+
+export async function setPhotoCaption(projectId: string, photoId: string, caption: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("site_photos").update({ caption }).eq("id", photoId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  photoPaths(projectId);
+  return { ok: true };
+}
+
+export async function deletePhoto(projectId: string, photoId: string) {
+  const supabase = await createClient();
+  const { data: row } = await supabase.from("site_photos").select("path").eq("id", photoId).eq("project_id", projectId).maybeSingle();
+  if (!row) return { error: "Photo not found." };
+  const { error } = await supabase.from("site_photos").delete().eq("id", photoId);
+  if (error) return { error: error.message.includes("row-level security") ? "Only the PM or site engineer on this project can remove photos." : error.message };
+  await supabase.storage.from("site-photos").remove([row.path as string]);
+  photoPaths(projectId);
+  return { ok: true };
+}

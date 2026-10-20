@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { health, title, type Project } from "@/lib/model";
 import { getApprovedItems } from "@/lib/boq";
+import { APP_URL } from "@/lib/notify";
 
 /** Daily site report — figures computed live from the progress log, words from site_reports. */
 
@@ -14,6 +15,7 @@ export type ProjectDay = {
   installedStart: number;                    // installed value at the start of the day (to show the day's delta)
   itemsDone: number; itemsLive: number;
   hasBill: boolean;
+  photos: number;                            // photos taken on the day
 };
 
 /** Dubai day boundaries as UTC ISO strings. */
@@ -26,12 +28,13 @@ export const todayDubai = () => new Date(Date.now() + 4 * 3600000).toISOString()
 export async function getProjectDay(projectId: string, day: string): Promise<ProjectDay | null> {
   const supabase = await createClient();
   const { start, end } = dayBounds(day);
-  const [{ data: p }, a, { data: rep }, { data: log }, { data: people }] = await Promise.all([
+  const [{ data: p }, a, { data: rep }, { data: log }, { data: people }, { count: photos }] = await Promise.all([
     supabase.from("projects_live").select("*").eq("id", projectId).maybeSingle(),
     getApprovedItems(projectId),
     supabase.from("site_reports").select("*").eq("project_id", projectId).eq("day", day).maybeSingle(),
     supabase.from("boq_progress").select("item_id, pct, prev_pct, by_id, at").gte("at", start).lt("at", end).order("at"),
     supabase.from("people").select("id, name"),
+    supabase.from("site_photos").select("id", { count: "exact", head: true }).eq("project_id", projectId).eq("day", day),
   ]);
   if (!p) return null;
   const project = p as Project;
@@ -59,6 +62,7 @@ export async function getProjectDay(projectId: string, day: string): Promise<Pro
     project, day, report: (rep as SiteReport | null) ?? null, lines,
     total: live.reduce((s, i) => s + i.amount, 0), installed: live.reduce((s, i) => s + i.amount * i.installed_pct / 100, 0), installedStart,
     itemsDone: live.filter((i) => i.installed_pct >= 100).length, itemsLive: live.length, hasBill: a.boqs.length > 0,
+    photos: photos ?? 0,
   };
 }
 
@@ -98,6 +102,7 @@ export function formatProjectReport(d: ProjectDay, author: string): string {
   if (r?.done) { out.push(""); out.push("*On site today*"); out.push(r.done.trim()); }
   if (r?.tomorrow) { out.push(""); out.push("*Tomorrow*"); out.push(r.tomorrow.trim()); }
   if (r?.issues) { out.push(""); out.push("*Issues / needs*"); out.push(r.issues.trim()); }
+  if (d.photos) { out.push(""); out.push(`📷 ${d.photos} photo${d.photos === 1 ? "" : "s"}: ${APP_URL}/p/${p.id}/${d.day}`); }
   return out.join("\n");
 }
 
@@ -114,6 +119,7 @@ export async function formatDigest(day: string): Promise<{ text: string; days: P
     const bits: string[] = [];
     if (overall != null) bits.push(`${pc(overall)} installed${delta > 0.05 ? ` (+${delta.toFixed(1)}%)` : ""}`);
     if (d.lines.length) bits.push(`${d.lines.length} item${d.lines.length === 1 ? "" : "s"} moved`);
+    if (d.photos) bits.push(`${d.photos} photo${d.photos === 1 ? "" : "s"}`);
     if (h) bits.push(h.text);
     if (p.target_date) bits.push(`target ${dm(p.target_date)}`);
     out.push(`*${title(p.name)}*${p.pm ? ` · ${title(p.pm)}` : ""}`);
