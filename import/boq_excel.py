@@ -54,12 +54,22 @@ def parse(path, sheet=None):
                 m = re.search(r"(\d+)\s*Working Days", g)
                 meta["working_days"] = int(m.group(1)) if m else None
 
+    # cost / markup columns move between templates (Meadows 5 has an empty column J): find them from the header rows
+    cost_col, mk_col = 10, 12
+    for r in range(20, 25):
+        for c in range(9, 16):
+            h = cell(ws, r, c)
+            if isinstance(h, str):
+                if h.lower().startswith("supplier unit price"):
+                    cost_col = c
+                elif h.lower().startswith("markup %"):
+                    mk_col = c
     sections, cur, sub = [], None, None
     terms, in_terms, done = [], False, False
     summary = {}
     for r in range(25, ws.max_row + 1):
         a, d = cell(ws, r, 1), cell(ws, r, 3)
-        q, u, rate, amt, cost, mk = (cell(ws, r, c) for c in (6, 7, 8, 9, 10, 12))
+        q, u, rate, amt, cost, mk = (cell(ws, r, c) for c in (6, 7, 8, 9, cost_col, mk_col))
         if done:
             if isinstance(a, str):
                 if a.startswith("General Terms"):
@@ -129,7 +139,7 @@ def parse(path, sheet=None):
             "rate": num(rate),
             "amount": num(amt),
             "cost_rate": num(cost) if num(cost) else None,
-            "markup_pct": round(num(mk) * 100, 2) if num(mk) is not None else None,
+            "markup_pct": round(num(mk) * 100, 2) if num(mk) is not None and 0 <= num(mk) <= 5 else None,
             "is_note": False,
         }
         if item["qty"] is None and item["rate"] is None:
@@ -163,6 +173,10 @@ def reconcile(sections):
     one row whose sign flip closes the gap; one or two rows the sheet silently left out of its sub-total."""
     notes = []
     for sec in sections:
+        for it in sec["items"]:
+            if not it["is_note"] and (it.get("amount") or 0) < 0 and (it.get("qty") or 0) > 0 and (it.get("rate") or 0) > 0:
+                it["qty"] = -it["qty"]
+                notes.append(f"{sec['code']}: '{it['description'][:50]}' is negative on the sheet, quantity negated")
         if DEDUCT_RE.search(sec["title"]):
             for it in sec["items"]:
                 if not it["is_note"] and (it.get("qty") or 0) > 0:

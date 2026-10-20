@@ -24,7 +24,7 @@ Location: Master Bathroom Shower & WC Area (3 walls + 1 niche)
 Tiles PC Rate: 250 AED/sqm', 1.0, 'LS', 9783.78, 350.0, 30.0, false, false);
 insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 1, '2', null, 'Supply of new porcelain wall tiles over existing tiles in shower area
 
-Note: Purchased by client.', 1.0, 'LS', 3305.0, null, 30.0, false, false);
+Note: Purchased by client.', -1.0, 'LS', 3305.0, null, 30.0, false, false);
 insert into boq_items(boq_id, section_id, sort, ref, subheading, description, qty, unit, rate, cost_rate, markup_pct, is_note, excluded) values (b, s, 2, null, null, 'Note: Additional Works for Exterior Area will be  quoted separately after Nakheel Approval;
 1. Garage Aluminum Louver
 2. Decorative Wall
