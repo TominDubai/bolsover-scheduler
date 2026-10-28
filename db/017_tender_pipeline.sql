@@ -75,9 +75,7 @@ drop trigger if exists trg_ball_pass on projects;
 create trigger trg_ball_pass before update on projects for each row execute function log_ball_pass();
 
 -- estimators may also set a quote to MERGED (through win_as_vo) — same policy shape as 001, plus MERGED
-drop policy if exists update_rows on projects;
-create policy update_rows on projects for update to authenticated
-  using ((me()).can_edit_projects or ((me()).can_edit_estimation and status in ('PENDING','QUOTED')))
+alter policy update_rows on projects
   with check ((me()).can_edit_projects or ((me()).can_edit_estimation and status in ('PENDING','QUOTED','WON','ON_HOLD','REJECTED','LOST','MERGED')));
 
 -- =====================================================================================

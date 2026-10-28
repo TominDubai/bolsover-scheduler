@@ -1,7 +1,7 @@
 -- 018: Meetings — one shared diary for the Bolsover office meeting room, site meetings and online calls (28 Oct 2026, catch-up session 2 — copied from C5 db/010).
 -- Decisions (Tom, 28 Oct): working week Mon–Sat (Saturdays quiet), one office room worth booking. Everybody enters their own meetings and anybody can edit any meeting; the meeting room is the only
 -- bookable space (hard no-overlap rule, enforced here); everything else is "on site", details in the notes.
-set search_path = scheduler, public;
+set search_path = scheduler, public, extensions;  -- extensions: btree_gist opclasses for the room exclusion constraint
 
 create extension if not exists btree_gist with schema extensions;
 
@@ -12,7 +12,7 @@ create table meetings (
   id            uuid primary key default gen_random_uuid(),
   title         text not null,
   project_id    uuid references projects(id) on delete set null,
-  location      meeting_location not null default 'ROOM',
+  location      meeting_location not null default 'SITE',   -- most Bolsover meetings are on site (Tom, 28 Oct)
   meeting_date  date not null,
   start_time    time not null,
   end_time      time not null,
