@@ -1,11 +1,12 @@
 "use client";
 import { useActionState, useState } from "react";
-import { ALL, QUOTE_STAGES, WAITING_ON, SCOPES, title, fmtD, type Project, type Person, type Contractor } from "@/lib/model";
+import { ALL, QUOTE_STAGES, WAITING_ON, SCOPES, SOURCES, SOURCE_NAMED, PROJECT_TYPES, SUBMIT_VIA, title, fmtD, isQuote, type Project, type Person, type Contractor } from "@/lib/model";
 import { saveProject, createProject } from "@/app/actions";
 
-type Props = { project?: Project | null; people: Person[]; contractors: Contractor[]; estimationOnly?: boolean; watchers?: string[] };
+type ProjectLite = { id: string; name: string; enquiry_no: string | null };
+type Props = { project?: Project | null; people: Person[]; contractors: Contractor[]; estimationOnly?: boolean; watchers?: string[]; liveProjects?: ProjectLite[] };
 
-export default function ProjectForm({ project, people, contractors, estimationOnly = false, watchers = [] }: Props) {
+export default function ProjectForm({ project, people, contractors, estimationOnly = false, watchers = [], liveProjects = [] }: Props) {
   const lock = estimationOnly; // estimators: pricing fields only
   const action = project ? saveProject.bind(null, project.id) : createProject;
   const [state, formAction, pending] = useActionState(action, null as { error?: string; ok?: boolean; at?: string } | null);
@@ -15,6 +16,9 @@ export default function ProjectForm({ project, people, contractors, estimationOn
   const v = (k: keyof Project) => (project?.[k] ?? "") as string;
   const [target, setTarget] = useState(v("target_date"));
   const [tagged, setTagged] = useState<Set<string>>(new Set(watchers));
+  const [source, setSource] = useState(v("source"));
+  const visitors = people.filter((p) => p.role === "QS" || p.role === "PM" || p.role === "SITE" || p.role === "MANAGEMENT");
+  const quoteSide = !project || isQuote(project.status);
   const targetChanged = !!project && target !== v("target_date");
   const nextRev = (project?.target_rev ?? -1) + 1;
   return (
@@ -25,7 +29,7 @@ export default function ProjectForm({ project, people, contractors, estimationOn
       <div className="field"><label htmlFor="contractor_id">Main contractor</label>
         <select id="contractor_id" name="contractor_id" defaultValue={v("contractor_id")}><option value="">—</option>{contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
       <div className="field"><label htmlFor="status">Status</label>
-        <select id="status" name="status" disabled={lock} defaultValue={project?.status ?? "PENDING"}>{ALL.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
+        <select id="status" name="status" disabled={lock} defaultValue={project?.status ?? "PENDING"}>{ALL.filter(([k]) => k !== "MERGED" || project?.status === "MERGED").map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
       <div className="field"><label htmlFor="pm_id">Project manager</label>
         <select id="pm_id" name="pm_id" disabled={lock} defaultValue={v("pm_id")}><option value="">Unassigned</option>{pms.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
       <div className="field"><label htmlFor="pm2_id">Second PM (optional)</label>
@@ -72,6 +76,24 @@ export default function ProjectForm({ project, people, contractors, estimationOn
       <div className="field"><label htmlFor="quote_due_date">Quote due</label><input id="quote_due_date" name="quote_due_date" type="date" defaultValue={v("quote_due_date")} /></div>
       <div className="field"><label htmlFor="quote_submitted_date">Quote submitted</label><input id="quote_submitted_date" name="quote_submitted_date" type="date" defaultValue={v("quote_submitted_date")} /></div>
       <div className="field"><label htmlFor="folder_path">Folder on the U: drive</label><input id="folder_path" name="folder_path" defaultValue={v("folder_path")} /></div>
+      <div className="field wide sep"><span className="sectionlabel">Tender</span></div>
+      <div className="field"><label htmlFor="client_address">Client address</label><input id="client_address" name="client_address" defaultValue={v("client_address")} /></div>
+      <div className="field"><label htmlFor="project_type">Type of project</label>
+        <select id="project_type" name="project_type" defaultValue={v("project_type")}><option value="">—</option>{PROJECT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
+      <div className="field"><label htmlFor="consultant">Consultant / designer firm</label><input id="consultant" name="consultant" defaultValue={v("consultant")} /></div>
+      <div className="field"><label htmlFor="source">How it came in</label>
+        <select id="source" name="source" value={source} onChange={(e) => setSource(e.target.value)}><option value="">—</option>{SOURCES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></div>
+      <div className="field"><label htmlFor="source_name">{source === "DESIGNER" ? "Which designer" : source === "REFERRAL" ? "Referred by" : "Who / where"}</label>
+        <input id="source_name" name="source_name" disabled={!SOURCE_NAMED.has(source)} defaultValue={v("source_name")} /></div>
+      <div className="field"><label htmlFor="site_visit_date">Site visit</label><input id="site_visit_date" name="site_visit_date" type="date" defaultValue={v("site_visit_date")} /></div>
+      <div className="field"><label htmlFor="site_visit_by">Site visit by</label>
+        <select id="site_visit_by" name="site_visit_by" defaultValue={v("site_visit_by")}><option value="">—</option>{visitors.map((p) => <option key={p.id} value={p.id}>{title(p.name)}</option>)}</select></div>
+      <div className="field"><label>Submit by</label><input type="hidden" name="submit_via_present" value="1" /><div className="checks">{SUBMIT_VIA.map((s) => <label key={s}><input type="checkbox" name="submit_via" value={s} defaultChecked={(project?.submit_via ?? "").split(", ").includes(s)} /> {s}</label>)}</div></div>
+      {quoteSide && (
+        <div className="field"><label htmlFor="parent_project_id">VO on a live job <small>(won → next VO there)</small></label>
+          <select id="parent_project_id" name="parent_project_id" defaultValue={v("parent_project_id")}><option value="">— no, it&rsquo;s its own project</option>{liveProjects.map((p) => <option key={p.id} value={p.id}>{p.enquiry_no ? `${p.enquiry_no} · ` : ""}{title(p.name)}</option>)}</select></div>
+      )}
+      <div className="field wide"><label htmlFor="outcome_reason">Win / loss reason</label><input id="outcome_reason" name="outcome_reason" defaultValue={v("outcome_reason")} placeholder="why it was won, lost or declined" /></div>
       <div className="field wide"><label htmlFor="notes">Notes</label><textarea id="notes" name="notes" rows={3} defaultValue={v("notes")} /></div>
       <div className="actions">
         <button className="btn" disabled={pending}>{pending ? "Saving…" : project ? "Save changes" : "Create project"}</button>

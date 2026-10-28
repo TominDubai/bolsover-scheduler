@@ -1,27 +1,37 @@
 // Bolsover pipeline (agreed 13 Oct 2026):
 // PENDING (being priced) → QUOTED (sent, awaiting feedback) → WON → PRE_MOB → LIVE → COMPLETED
 // Exits from QUOTED: ON_HOLD, REJECTED (client dropped it), LOST (went elsewhere / by others)
+// MERGED (db/017): a VO enquiry that was won and became a VO line on its parent project — off every board.
 export type Status =
   | "PENDING" | "QUOTED" | "WON" | "PRE_MOB" | "LIVE" | "COMPLETED"
-  | "ON_HOLD" | "REJECTED" | "LOST";
+  | "ON_HOLD" | "REJECTED" | "LOST" | "MERGED";
 
 export const STAGES: [Status, string][] = [
   ["PENDING", "Pending"], ["QUOTED", "Quoted"], ["WON", "Won"],
   ["PRE_MOB", "Pre-mob"], ["LIVE", "Live"], ["COMPLETED", "Completed"],
 ];
 export const SIDE: [Status, string][] = [["ON_HOLD", "On hold"], ["REJECTED", "Rejected"], ["LOST", "Lost"]];
-export const ALL = [...STAGES, ...SIDE];
+/** MERGED never gets a column: the enquiry lives on as a VO line on its parent */
+export const ALL: [Status, string][] = [...STAGES, ...SIDE, ["MERGED", "Merged into parent"]];
 /** still on the quote side of the pipeline (estimation tab owns it) */
 export const isQuote = (s: Status) => s === "PENDING" || s === "QUOTED";
 /** out of the pipeline for good */
-export const isDead = (s: Status) => s === "LOST" || s === "REJECTED";
+export const isDead = (s: Status) => s === "LOST" || s === "REJECTED" || s === "MERGED";
 export const LABEL: Record<Status, string> = Object.fromEntries(ALL) as Record<Status, string>;
 export const ORDER: Record<Status, number> = Object.fromEntries(ALL.map(([k], i) => [k, i])) as Record<Status, number>;
 
-export type QuoteStage = "QUEUED" | "PRICING" | "AWAITING_SUPPLIER" | "SUBMITTED";
+// QUALIFYING (db/017, Tom 28 Oct): every new enquiry lands here; management proceed (→ Queued) or decline (→ Rejected)
+// before the QS prices it. SUBMITTED = the quote is with the client (status QUOTED).
+export type QuoteStage = "QUALIFYING" | "QUEUED" | "PRICING" | "AWAITING_SUPPLIER" | "SUBMITTED";
 export const QUOTE_STAGES: [QuoteStage, string][] = [
-  ["QUEUED", "Queued"], ["PRICING", "Being priced"], ["AWAITING_SUPPLIER", "Waiting on info"], ["SUBMITTED", "Submitted"],
+  ["QUALIFYING", "Qualifying"], ["QUEUED", "Queued"], ["PRICING", "Being priced"], ["AWAITING_SUPPLIER", "Waiting on info"], ["SUBMITTED", "Submitted"],
 ];
+export const SOURCES: [string, string][] = [["WORD_OF_MOUTH", "Word of mouth"], ["INSTAGRAM", "Instagram"], ["REFERRAL", "Referral"], ["DESIGNER", "Designer"], ["REPEAT_CLIENT", "Repeat client"], ["OTHER", "Other"]];
+export const SOURCE_LABEL: Record<string, string> = Object.fromEntries(SOURCES);
+/** sources that name a person: the form asks "who?" */
+export const SOURCE_NAMED = new Set(["REFERRAL", "DESIGNER", "OTHER"]);
+export const PROJECT_TYPES = ["Villa fit-out", "Apartment fit-out", "Office", "Retail / F&B", "Renovation", "Landscaping", "Furniture / joinery", "Variation", "Other"];
+export const SUBMIT_VIA = ["Email", "WhatsApp"];
 export const QUOTE_LABEL: Record<QuoteStage, string> = Object.fromEntries(QUOTE_STAGES) as Record<QuoteStage, string>;
 
 export type Project = {
@@ -32,6 +42,11 @@ export type Project = {
   signed_quote: number; notes: string | null; updated_at: string; location: string | null; job_ref: string | null; archived_at: string | null;
   quote_stage: QuoteStage; estimator_id: string | null; quoted_value: number | null; quote_submitted_date: string | null; quote_due_date: string | null; folder_path: string | null;
   quote_type: string | null; scope: string | null; waiting_on: string | null; raised_by: string | null;
+  // tender fields (db/017)
+  source: string | null; source_name: string | null; consultant: string | null; client_address: string | null; project_type: string | null;
+  site_visit_date: string | null; site_visit_by: string | null; submit_via: string | null; outcome_reason: string | null;
+  qualified_at: string | null; qualified_by: string | null; ball_with: string | null; ball_since: string | null; ball_note: string | null; parent_project_id: string | null;
+  parent_name: string | null; parent_enquiry_no: string | null; ball_with_name: string | null; site_visit_by_name: string | null; boq_margin_pct: number | null;
   // from projects_live
   contractor: string | null; pm: string | null; pm2: string | null; site_engineer: string | null; estimator: string | null; days_since_enquiry: number | null;
   project_value: number; vo_count: number; days_to_completion: number | null; duration_days: number | null; days_delayed: number | null; status_since: string | null;
@@ -78,7 +93,8 @@ export function enqKey(no: string | null): number {
 }
 export const byEnq = <T extends { enquiry_no: string | null; name: string }>(a: T, b: T) => enqKey(a.enquiry_no) - enqKey(b.enquiry_no) || a.name.localeCompare(b.name);
 export type Contractor = { id: string; name: string };
-export type Variation = { id: string; project_id: string; vo_no: number; description: string | null; value: number; approved_on: string | null };
+export type Variation = { id: string; project_id: string; vo_no: number; description: string | null; value: number; approved_on: string | null; source_enquiry_id?: string | null };
+export type EnquiryPass = { id: number; project_id: string; from_id: string | null; to_id: string | null; note: string | null; passed_at: string; from?: { name: string } | null; to?: { name: string } | null };
 export type Package = {
   id: string; project_id: string; code: string | null; name: string; sort: number;
   planned_start: string | null; planned_finish: string | null; planned_days: number | null;
@@ -140,3 +156,33 @@ export function packageTone(k: Pick<Package, "planned_start" | "planned_finish" 
   if (!started) return { tone: "none", text: day(k.planned_start ?? plan) === 0 ? "Starts today" : `Starts in ${day(k.planned_start ?? plan)}d`, slip };
   return { tone: left <= 7 ? "soon" : "ok", text: left === 0 ? "Due today" : `${left}d left`, slip };
 }
+
+// ---------- meetings (db/018, copied from C5) ----------
+export type MeetingLocation = "ROOM" | "SITE" | "ONLINE";
+export const LOCATION_LABEL: Record<MeetingLocation, string> = { ROOM: "Office room", SITE: "On site", ONLINE: "Online" };
+export type Meeting = {
+  id: string; title: string; project_id: string | null; location: MeetingLocation;
+  meeting_date: string; start_time: string; end_time: string; notes: string | null; cancelled: boolean;
+  created_by: string | null; updated_by: string | null; created_at: string; updated_at: string;
+  // from meetings_live
+  project_name: string | null; enquiry_no: string | null; created_by_name: string | null; updated_by_name: string | null;
+  attendee_ids: string[]; attendees: string[];
+};
+/** Working week: Monday to Saturday (Saturdays are quiet but on the diary), 08:00–18:00 Dubai. */
+export const WEEK_DAYS = 6;
+export const DAY_START = 8;   // working hours, shaded and where the grid opens
+export const DAY_END = 18;
+export const GRID_START = 6;  // the grid itself runs 06:00–22:00 so early or late meetings still fit
+export const GRID_END = 22;
+export const hm = (t: string | null | undefined) => (t ?? "").slice(0, 5);          // "09:30:00" -> "09:30"
+export const mins = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+/** YYYY-MM-DD for today in Dubai, whatever the server's clock zone */
+export const todayDubai = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Dubai" });
+export const addDays = (iso: string, n: number) => { const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+/** the Monday that starts the working week containing `iso` (a Sunday rolls forward to the coming week) */
+export function weekStart(iso: string) {
+  const dow = new Date(iso + "T00:00:00Z").getUTCDay(); // 0 = Sun
+  return dow === 0 ? addDays(iso, 1) : addDays(iso, 1 - dow);
+}
+export const fmtDay = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+export const fmtDayLong = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });

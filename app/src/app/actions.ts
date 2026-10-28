@@ -50,6 +50,18 @@ function projectFields(fd: FormData) {
   if (has("scope")) out.scope = fd.getAll("scope").map(String).filter(Boolean).join(", ") || null;
   if (has("waiting_on")) out.waiting_on = nz(fd.get("waiting_on"));
   if (has("raised_by")) out.raised_by = nz(fd.get("raised_by"))?.toUpperCase() ?? null;
+  // tender fields (db/017)
+  if (has("source")) out.source = nz(fd.get("source"));
+  if (has("source_name")) out.source_name = nz(fd.get("source_name"));
+  if (has("consultant")) out.consultant = nz(fd.get("consultant"));
+  if (has("client_address")) out.client_address = nz(fd.get("client_address"));
+  if (has("project_type")) out.project_type = nz(fd.get("project_type"));
+  if (has("site_visit_date")) out.site_visit_date = nz(fd.get("site_visit_date"));
+  if (has("site_visit_by")) out.site_visit_by = nz(fd.get("site_visit_by"));
+  if (has("submit_via_present")) out.submit_via = fd.getAll("submit_via").map(String).filter(Boolean).join(", ") || null;
+  if (has("outcome_reason")) out.outcome_reason = nz(fd.get("outcome_reason"));
+  if (has("parent_project_id")) out.parent_project_id = nz(fd.get("parent_project_id"));
+  if (has("ball_with")) out.ball_with = nz(fd.get("ball_with"));
   return out as { name?: string } & Record<string, unknown>;
 }
 
@@ -58,11 +70,33 @@ function bust(id?: string) {
   if (id) revalidatePath(`/projects/${id}`);
 }
 
+/** Drag on the Estimation board. SUBMITTED means the quote is with the client, so status follows:
+ *  into SUBMITTED → QUOTED, out of it → PENDING. Leaving QUALIFYING stamps qualified_at (trigger, db/017). */
 export async function setQuoteStage(id: string, quote_stage: QuoteStage) {
   const supabase = await createClient();
-  const patch: Record<string, unknown> = { quote_stage };
+  const patch: Record<string, unknown> = { quote_stage, status: quote_stage === "SUBMITTED" ? "QUOTED" : "PENDING" };
   if (quote_stage === "SUBMITTED") patch.quote_submitted_date = new Date().toISOString().slice(0, 10);
   const { error } = await supabase.from("projects").update(patch).eq("id", id);
+  if (error) return { error: error.message };
+  bust(id); return { ok: true };
+}
+
+/** Management's proceed / decline on a Qualifying card (Tom, 28 Oct). Proceed queues it for the QS and hands the ball to them. */
+export async function qualify(id: string, proceed: boolean, reason: string | null) {
+  const supabase = await createClient();
+  const { data: p } = await supabase.from("projects").select("estimator_id").eq("id", id).single();
+  const patch: Record<string, unknown> = proceed
+    ? { quote_stage: "QUEUED", ball_with: p?.estimator_id ?? null, ball_note: "Approved to price" }
+    : { status: "REJECTED", outcome_reason: reason };
+  const { error } = await supabase.from("projects").update(patch).eq("id", id);
+  if (error) return { error: error.message };
+  bust(id); return { ok: true };
+}
+
+/** The responsibility pass: hand the enquiry to someone. The trigger logs the pass and the digest tells the receiver. */
+export async function passEnquiry(id: string, to: string | null, note: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("projects").update({ ball_with: to, ball_note: note }).eq("id", id);
   if (error) return { error: error.message };
   bust(id); return { ok: true };
 }
@@ -75,19 +109,28 @@ export async function saveWaitingOn(id: string, waiting_on: string | null) {
   return { ok: true };
 }
 
-export async function markWon(id: string) {
+/** Won: the quote becomes a project at WON (award email to management, pre-mob checklist seeds).
+ *  A VO enquiry with a parent instead becomes the next VO on that project (win_as_vo, db/017). */
+export async function markWon(id: string, reason: string | null = null) {
   const supabase = await createClient();
-  const { data: p } = await supabase.from("projects").select("signed_quote, quoted_value").eq("id", id).single();
-  const patch: Record<string, unknown> = { status: "QUOTED", quote_stage: "SUBMITTED" };
+  const { data: p } = await supabase.from("projects").select("signed_quote, quoted_value, parent_project_id").eq("id", id).single();
+  if (p?.parent_project_id) {
+    if (reason) await supabase.from("projects").update({ outcome_reason: reason }).eq("id", id);
+    const { data: n, error } = await supabase.rpc("win_as_vo", { enquiry: id });
+    if (error) return { error: error.message };
+    bust(id); revalidatePath(`/projects/${p.parent_project_id}`);
+    return { ok: true, vo_no: n as number, parent: p.parent_project_id as string };
+  }
+  const patch: Record<string, unknown> = { status: "WON", quote_stage: "SUBMITTED", outcome_reason: reason };
   if (p && !(p.signed_quote > 0) && p.quoted_value) patch.signed_quote = p.quoted_value;
   const { error } = await supabase.from("projects").update(patch).eq("id", id);
   if (error) return { error: error.message };
   bust(id); return { ok: true };
 }
 
-export async function markLost(id: string) {
+export async function markLost(id: string, reason: string | null = null, status: "LOST" | "REJECTED" = "LOST") {
   const supabase = await createClient();
-  const { error } = await supabase.from("projects").update({ status: "LOST" }).eq("id", id);
+  const { error } = await supabase.from("projects").update({ status, outcome_reason: reason }).eq("id", id);
   if (error) return { error: error.message };
   bust(id); return { ok: true };
 }
@@ -105,7 +148,12 @@ export async function createEnquiry(_prev: unknown, fd: FormData) {
     quote_due_date: nz(fd.get("quote_due_date")), folder_path: nz(fd.get("folder_path")), notes: nz(fd.get("notes")),
     quote_type: nz(fd.get("quote_type"))?.toUpperCase() ?? null, scope: fd.getAll("scope").map(String).filter(Boolean).join(", ") || null,
     raised_by: nz(fd.get("raised_by"))?.toUpperCase() ?? null,
-    status: "PENDING", quote_stage: "QUEUED",
+    source: nz(fd.get("source")), source_name: nz(fd.get("source_name")), consultant: nz(fd.get("consultant")),
+    client_address: nz(fd.get("client_address")), project_type: nz(fd.get("project_type")),
+    site_visit_date: nz(fd.get("site_visit_date")), site_visit_by: nz(fd.get("site_visit_by")),
+    submit_via: fd.getAll("submit_via").map(String).filter(Boolean).join(", ") || null,
+    parent_project_id: nz(fd.get("parent_project_id")),
+    status: "PENDING", quote_stage: "QUALIFYING",   // every enquiry is qualified by management first (Tom, 28 Oct)
   }).select("id, enquiry_no").single();
   if (error) return { error: error.message };
   bust(data.id);
@@ -504,5 +552,65 @@ export async function deletePhoto(projectId: string, photoId: string) {
   if (error) return { error: error.message.includes("row-level security") ? "Only the PM or site engineer on this project can remove photos." : error.message };
   await supabase.storage.from("site-photos").remove([row.path as string]);
   photoPaths(projectId);
+  return { ok: true };
+}
+
+// ---------- meetings (db/018, copied from C5) ----------
+import { hm, type MeetingLocation } from "@/lib/model";
+
+function bustMeetings(projectId?: string | null) {
+  revalidatePath("/meetings"); revalidatePath("/board");
+  if (projectId) revalidatePath(`/projects/${projectId}`);
+}
+
+/** "Room taken 11:00–12:00 — Tom, Oro Verde" for the overlapping booking(s), or null. */
+async function roomClash(date: string, start: string, end: string, excludeId: string | null) {
+  const supabase = await createClient();
+  let q = supabase.from("meetings_live").select("id, title, start_time, end_time, attendees, project_name").eq("meeting_date", date).eq("location", "ROOM").eq("cancelled", false).lt("start_time", end).gt("end_time", start);
+  if (excludeId) q = q.neq("id", excludeId);
+  const { data } = await q;
+  if (!data?.length) return null;
+  return "Room taken " + data.map((m) => `${hm(m.start_time)}–${hm(m.end_time)} — ${(m.attendees as string[]).map((a: string) => a.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())).join(", ") || m.title}${m.project_name ? `, ${m.project_name}` : ""}`).join("; ");
+}
+
+export async function saveMeeting(id: string | null, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const title = nz(fd.get("title"));
+  const meeting_date = nz(fd.get("meeting_date"));
+  const start_time = nz(fd.get("start_time"));
+  const end_time = nz(fd.get("end_time"));
+  const location = (nz(fd.get("location")) ?? "SITE") as MeetingLocation;
+  if (!title) return { error: "Give the meeting a title." };
+  if (!meeting_date || !start_time || !end_time) return { error: "Date, start and end are required." };
+  if (end_time <= start_time) return { error: "The end time must be after the start time." };
+  if (location === "ROOM") { const clash = await roomClash(meeting_date, start_time, end_time, id); if (clash) return { error: clash }; }
+
+  const row = { title, meeting_date, start_time, end_time, location, project_id: nz(fd.get("project_id")), notes: nz(fd.get("notes")) };
+  const attendees = fd.getAll("attendees").map(String).filter(Boolean);
+  let meetingId = id;
+  if (id) {
+    const { error } = await supabase.from("meetings").update(row).eq("id", id);
+    if (error) return { error: error.code === "23P01" ? (await roomClash(meeting_date, start_time, end_time, id)) ?? "The room is already booked then." : error.message };
+    // sync attendees: add the new ones, remove the dropped ones (the trigger logs each change)
+    const { data: cur } = await supabase.from("meeting_attendees").select("person_id").eq("meeting_id", id);
+    const have = new Set((cur ?? []).map((r) => r.person_id as string));
+    const add = attendees.filter((a) => !have.has(a)); const drop = [...have].filter((a) => !attendees.includes(a));
+    if (add.length) await supabase.from("meeting_attendees").insert(add.map((person_id) => ({ meeting_id: id, person_id })));
+    if (drop.length) await supabase.from("meeting_attendees").delete().eq("meeting_id", id).in("person_id", drop);
+  } else {
+    const { data, error } = await supabase.from("meetings").insert(row).select("id").single();
+    if (error) return { error: error.code === "23P01" ? (await roomClash(meeting_date, start_time, end_time, null)) ?? "The room is already booked then." : error.message };
+    meetingId = data.id as string;
+    if (attendees.length) await supabase.from("meeting_attendees").insert(attendees.map((person_id) => ({ meeting_id: meetingId, person_id })));
+  }
+  bustMeetings(row.project_id);
+  return { ok: true, id: meetingId, at: new Date().toISOString() };
+}
+
+export async function cancelMeeting(id: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("meetings").update({ cancelled: true }).eq("id", id).select("project_id").single();
+  if (error) return { error: error.message };
+  bustMeetings(data?.project_id);
   return { ok: true };
 }

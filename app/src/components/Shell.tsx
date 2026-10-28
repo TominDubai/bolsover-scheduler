@@ -8,7 +8,7 @@ export function Monogram() {
   return <img className="mono" src="/bolsover-mark.svg" alt="Bolsover" width={34} height={34} />;
 }
 
-export default async function Shell({ active, children, tools }: { active?: "board" | "list" | "estimation" | "rates" | "report" | "team"; children: React.ReactNode; tools?: React.ReactNode }) {
+export default async function Shell({ active, children, tools }: { active?: "board" | "list" | "estimation" | "rates" | "report" | "team" | "meetings"; children: React.ReactNode; tools?: React.ReactNode }) {
   const [user, me] = await Promise.all([getUser(), getMe().catch(() => ({ id: null, name: "", role: "", canEstimation: false, canProjects: false, canTeam: false, isAdmin: false }))]);
   return (
     <>
@@ -20,6 +20,7 @@ export default async function Shell({ active, children, tools }: { active?: "boa
           <Link href="/board" className={"tab" + (active === "board" ? " on" : "")}>Board</Link>
           <Link href="/list" className={"tab" + (active === "list" ? " on" : "")}>List</Link>
           <Link href="/report" className={"tab" + (active === "report" ? " on" : "")}>Daily</Link>
+          <Link href="/meetings" className={"tab" + (active === "meetings" ? " on" : "")}>Meetings</Link>
           <Link href="/team" className={"tab" + (active === "team" ? " on" : "")}>Team</Link>
         </nav>
         <div className="tools">

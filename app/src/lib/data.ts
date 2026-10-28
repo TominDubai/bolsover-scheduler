@@ -69,3 +69,24 @@ export async function getProjectWatchers(projectId: string): Promise<string[]> {
   const { data } = await supabase.from("project_watchers").select("person_id").eq("project_id", projectId);
   return ((data ?? []) as { person_id: string }[]).map((r) => r.person_id);
 }
+
+// ---------- meetings (db/018) ----------
+import type { Meeting, EnquiryPass } from "@/lib/model";
+export async function getMeetings(from: string, to: string): Promise<Meeting[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("meetings_live").select("*").eq("cancelled", false).gte("meeting_date", from).lte("meeting_date", to).order("meeting_date").order("start_time");
+  if (error) throw new Error(`meetings_live: ${error.message}`);
+  return (data ?? []) as Meeting[];
+}
+export async function getProjectMeetings(projectId: string): Promise<Meeting[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("meetings_live").select("*").eq("cancelled", false).eq("project_id", projectId).order("meeting_date", { ascending: false }).order("start_time").limit(20);
+  return (data ?? []) as Meeting[];
+}
+
+/** The responsibility passes on an enquiry, newest first (db/017). */
+export async function getEnquiryPasses(projectId: string): Promise<EnquiryPass[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("enquiry_passes").select("*, from:people!enquiry_passes_from_id_fkey(name), to:people!enquiry_passes_to_id_fkey(name)").eq("project_id", projectId).order("passed_at", { ascending: false }).limit(20);
+  return (data ?? []) as EnquiryPass[];
+}
