@@ -22,7 +22,7 @@ export default function Programme({ projectId, packages, activities, canEdit }: 
   return (
     <div className="panel">
       <div className="prog-head">
-        <h2>Programme</h2>
+        <h2>Programme <small style={{ fontWeight: 700, color: "var(--fg3)" }}>· progress against the P6 baseline</small></h2>
         <span className="note">{done}/{packages.length} packages done · {overall}% weighted · {late ? <b style={{ color: "var(--crit)" }}>{late} behind</b> : <b style={{ color: "var(--ok)" }}>on track</b>}</span>
       </div>
       <div className="prog">

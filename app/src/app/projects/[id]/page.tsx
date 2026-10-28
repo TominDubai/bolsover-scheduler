@@ -12,8 +12,9 @@ import RemoveProject, { RemovedBanner } from "@/components/RemoveProject";
 import TargetRevisions from "@/components/TargetRevisions";
 import TenderPanel from "@/components/TenderPanel";
 import ProjectMeetings from "@/components/ProjectMeetings";
+import PackagesPanel from "@/components/PackagesPanel";
 import { getBoqSummaries, getContract, getValuations, canSeeCost } from "@/lib/boq";
-import { getProject, getProjects, getPeople, getContractors, getMe, getTargetRevisions, getProjectWatchers, getEnquiryPasses, getProjectMeetings } from "@/lib/data";
+import { getProject, getProjects, getPeople, getContractors, getMe, getTargetRevisions, getProjectWatchers, getEnquiryPasses, getProjectMeetings, getPackages, getTrades, getSuppliers } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { STAGES, ORDER, LABEL, aed, fmtD, title, tone, delayText, isQuote, isDead, byEnq, type Variation, type History, type Package, type Activity, type Checkin as CheckinRow, type Person } from "@/lib/model";
 
@@ -31,6 +32,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
     getBoqSummaries(id), getContract(id), getValuations(id), supabase.rpc("me"), getTargetRevisions(id), getProjectWatchers(id),
     getEnquiryPasses(id), getProjectMeetings(id), getProjects(),
   ]);
+  const [pkgLive, trades, suppliers] = await Promise.all([getPackages(id), getTrades(), getSuppliers()]);
   const liveProjects = all.filter((x) => x.id !== id && !isQuote(x.status) && !isDead(x.status) && x.status !== "COMPLETED" && !x.archived_at).sort(byEnq).map((x) => ({ id: x.id, name: x.name, enquiry_no: x.enquiry_no }));
   const packages = (pkgs ?? []) as Package[];
   const { data: acts } = packages.length
@@ -84,6 +86,10 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
         <BoqPanel projectId={p.id} boqs={boqs} contract={contract} valuations={valuations} canEdit={canEdit} showCost={canSeeCost(meRow as Person | null)} isLive={ORDER[p.status] >= ORDER.WON && ORDER[p.status] <= ORDER.COMPLETED} />
         {(p.status === "LIVE" || p.status === "PRE_MOB") && (
           <Checkin p={p} checkins={(cks ?? []) as CheckinRow[]} canPost={me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id)} myId={me.id} />
+        )}
+        {(packages.length > 0 || ORDER[p.status] >= ORDER.WON) && ORDER[p.status] <= ORDER.COMPLETED && (
+          <PackagesPanel projectId={p.id} packages={pkgLive} trades={trades} suppliers={suppliers} people={people}
+            canEdit={!p.deleted_at && (me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id))} showValue={canSeeCost(meRow as Person | null)} />
         )}
         {(packages.length > 0 || ORDER[p.status] >= ORDER.WON) && ORDER[p.status] <= ORDER.COMPLETED && (
           <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects && !p.deleted_at} />

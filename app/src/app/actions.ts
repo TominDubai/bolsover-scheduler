@@ -614,3 +614,65 @@ export async function cancelMeeting(id: string) {
   bustMeetings(data?.project_id);
   return { ok: true };
 }
+
+// ---------- packages (db/019) ----------
+const pkgPaths = (projectId: string) => { revalidatePath(`/projects/${projectId}`); revalidatePath("/packages"); revalidatePath("/board"); };
+
+export async function createPackage(projectId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const name = nz(fd.get("name")); if (!name) return { error: "Give the package a name." };
+  const row: Record<string, unknown> = {
+    project_id: projectId, name: name.toUpperCase(), trade_id: nz(fd.get("trade_id")), supplier_id: nz(fd.get("supplier_id")), owner_id: nz(fd.get("owner_id")),
+    value: fd.get("value") ? num(fd.get("value")) : null, planned_start: nz(fd.get("planned_start")), planned_finish: nz(fd.get("planned_finish")), note: nz(fd.get("note")),
+  };
+  if (fd.get("awarded") === "on") row.awarded_on = new Date().toISOString().slice(0, 10);
+  const { data, error } = await supabase.from("programme_packages").insert(row).select("id").single();
+  if (error) return { error: error.message };
+  pkgPaths(projectId);
+  return { ok: true, at: new Date().toISOString(), id: data?.id as string };
+}
+
+/** Everything on the package drawer: trade, supplier, value, owner, planned dates, the five milestones, the approval line. */
+export async function savePackage(projectId: string, packageId: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = {};
+  const has = (k: string) => fd.has(k);
+  if (has("name")) patch.name = (nz(fd.get("name")) ?? "").toUpperCase();
+  for (const k of ["trade_id", "supplier_id", "owner_id", "planned_start", "planned_finish", "forecast_finish", "awarded_on", "approved_on", "on_site_on", "complete_on", "snagged_on", "approval_authority", "approval_submitted", "approval_received", "approval_note", "note"]) if (has(k)) patch[k] = nz(fd.get(k));
+  if (has("value")) patch.value = nz(fd.get("value")) == null ? null : num(fd.get("value"));
+  if (has("pct_complete")) patch.pct_complete = Math.max(0, Math.min(100, Math.round(num(fd.get("pct_complete")))));
+  if (patch.name === "") return { error: "The package needs a name." };
+  const { error } = await supabase.from("programme_packages").update(patch).eq("id", packageId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  pkgPaths(projectId);
+  return { ok: true, at: new Date().toISOString() };
+}
+
+/** Tap a milestone on the row: sets it to today (or clears it). The trigger fills in the earlier ones. */
+export async function setMilestone(projectId: string, packageId: string, milestone: string, date: string | null) {
+  if (!["awarded_on", "approved_on", "on_site_on", "complete_on", "snagged_on"].includes(milestone)) return { error: "Unknown milestone" };
+  const supabase = await createClient();
+  const { error } = await supabase.from("programme_packages").update({ [milestone]: date }).eq("id", packageId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  pkgPaths(projectId);
+  return { ok: true };
+}
+
+export async function cancelPackage(projectId: string, packageId: string, cancelled: boolean) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("programme_packages").update({ cancelled }).eq("id", packageId).eq("project_id", projectId);
+  if (error) return { error: error.message };
+  pkgPaths(projectId);
+  return { ok: true };
+}
+
+export async function createSupplier(name: string, tradeId: string | null): Promise<{ id?: string; error?: string }> {
+  const supabase = await createClient();
+  const n = name.trim(); if (!n) return { error: "Name?" };
+  const { data: existing } = await supabase.from("suppliers").select("id").ilike("name", n).maybeSingle();
+  if (existing) return { id: existing.id as string };
+  const { data, error } = await supabase.from("suppliers").insert({ name: n, trade_id: tradeId }).select("id").single();
+  if (error) return { error: error.message };
+  revalidatePath("/packages");
+  return { id: data.id as string };
+}

@@ -57,6 +57,8 @@ export type Project = {
   deleted_at: string | null; deleted_reason: string | null; deleted_by: string | null; deleted_by_name: string | null;
   // target completion revisions (db/016): highest rev_no = current, Rev 0 = original programme
   target_rev: number | null; target_rev0_date: string | null;
+  // package counts (db/019 project_package_counts), stitched on by getProjects — not a view column
+  pkg?: PackageCounts | null;
 };
 export type TargetRevision = { id: number; project_id: string; rev_no: number; target_date: string | null; prev_date: string | null; reason: string | null; set_by: string | null; set_at: string; who?: { name: string } | null };
 export type CheckinStatus = "ON_TRACK" | "SLIPPING" | "BLOCKED";
@@ -95,12 +97,44 @@ export const byEnq = <T extends { enquiry_no: string | null; name: string }>(a: 
 export type Contractor = { id: string; name: string };
 export type Variation = { id: string; project_id: string; vo_no: number; description: string | null; value: number; approved_on: string | null; source_enquiry_id?: string | null };
 export type EnquiryPass = { id: number; project_id: string; from_id: string | null; to_id: string | null; note: string | null; passed_at: string; from?: { name: string } | null; to?: { name: string } | null };
+// ---------- packages (db/019): one work package per trade; the programme rows ARE the package rows ----------
+export type PackageStatus = "NOT_AWARDED" | "AWARDED" | "APPROVED" | "ON_SITE" | "COMPLETE" | "SNAGGED" | "CANCELLED";
+export const PACKAGE_STATUSES: [PackageStatus, string][] = [
+  ["NOT_AWARDED", "Not awarded"], ["AWARDED", "Awarded"], ["APPROVED", "Approvals done"], ["ON_SITE", "On site"], ["COMPLETE", "Complete"], ["SNAGGED", "Snagged"], ["CANCELLED", "Cancelled"],
+];
+export const PACKAGE_STATUS_LABEL: Record<PackageStatus, string> = Object.fromEntries(PACKAGE_STATUSES) as Record<PackageStatus, string>;
+export const PACKAGE_STATUS_ORDER: Record<PackageStatus, number> = Object.fromEntries(PACKAGE_STATUSES.map(([k], i) => [k, i])) as Record<PackageStatus, number>;
+/** the five milestones, in order, with the column each one lives in */
+export const MILESTONES: [keyof Package, string][] = [["awarded_on", "Awarded"], ["approved_on", "Approvals done"], ["on_site_on", "On site"], ["complete_on", "Complete"], ["snagged_on", "Snagged"]];
+export const AUTHORITIES = ["Dubai Municipality", "Emaar", "Nakheel", "Trakhees", "DDA", "Consultant", "Other"];
+export type PackageTrade = { id: string; name: string; short: string; sort_order: number; is_active: boolean };
+export type Supplier = { id: string; name: string; trade_id: string | null; contact: string | null; phone: string | null; email: string | null; notes: string | null; is_active: boolean };
 export type Package = {
   id: string; project_id: string; code: string | null; name: string; sort: number;
   planned_start: string | null; planned_finish: string | null; planned_days: number | null;
   actual_start: string | null; actual_finish: string | null; forecast_finish: string | null;
   pct_complete: number; note: string | null; updated_at: string;
+  trade_id: string | null; supplier_id: string | null; value: number | null; status: PackageStatus; owner_id: string | null;
+  awarded_on: string | null; approved_on: string | null; on_site_on: string | null; complete_on: string | null; snagged_on: string | null; cancelled: boolean;
+  approval_authority: string | null; approval_submitted: string | null; approval_received: string | null; approval_note: string | null;
+  // from packages_live
+  trade: string | null; trade_short: string | null; supplier: string | null; owner: string | null;
+  project_name: string; enquiry_no: string | null; project_status: Status; client: string | null; project_deleted_at: string | null; project_archived_at: string | null;
+  pm_id: string | null; pm: string | null; site_engineer_id: string | null;
+  slipping: boolean; forecast_late: boolean; no_dates: boolean; approval_waiting: boolean; approval_waiting_days: number | null; days_overdue: number | null;
 };
+export type PackageCounts = { project_id: string; pkg_total: number; pkg_awarded: number; pkg_on_site: number; pkg_complete: number; pkg_slipping: number; pkg_not_awarded: number; pkg_value_awarded: number | null; earliest_slip: string | null };
+/** What's wrong with a package, worst first — the flags on the row and the reminder rules in alerts.ts use the same test. */
+export function packageFlags(k: Pick<Package, "status" | "cancelled" | "slipping" | "forecast_late" | "no_dates" | "approval_waiting" | "approval_waiting_days" | "days_overdue" | "approval_authority">): { tone: Tone; text: string }[] {
+  if (k.cancelled || k.status === "COMPLETE" || k.status === "SNAGGED") return [];
+  const f: { tone: Tone; text: string }[] = [];
+  if (k.slipping) f.push({ tone: (k.days_overdue ?? 0) > 14 ? "crit" : "warn", text: `${k.days_overdue}d overdue` });
+  else if (k.forecast_late) f.push({ tone: "warn", text: "Forecast late" });
+  if (k.approval_waiting && (k.approval_waiting_days ?? 0) >= 14) f.push({ tone: "warn", text: `${k.approval_authority ?? "Approval"} ${k.approval_waiting_days}d` });
+  if (k.no_dates) f.push({ tone: "soon", text: "No dates" });
+  return f;
+}
+export const packageTone2 = (k: Parameters<typeof packageFlags>[0]): Tone => k.cancelled ? "none" : k.status === "COMPLETE" || k.status === "SNAGGED" ? "done" : (packageFlags(k)[0]?.tone ?? (k.status === "ON_SITE" ? "ok" : "none"));
 export type Activity = { id: string; package_id: string; code: string | null; name: string; sort: number; planned_start: string | null; planned_finish: string | null; planned_days: number | null };
 export type History = { id: string; from_status: Status | null; to_status: Status; changed_at: string; note: string | null; changed_by: string | null; who?: string | null };
 

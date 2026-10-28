@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { health, title, type Project } from "@/lib/model";
+import { health, title, type Project, type Package } from "@/lib/model";
 import { getApprovedItems } from "@/lib/boq";
 import { APP_URL } from "@/lib/notify";
 
@@ -16,6 +16,7 @@ export type ProjectDay = {
   itemsDone: number; itemsLive: number;
   hasBill: boolean;
   photos: number;                            // photos taken on the day
+  packages: Package[];                       // the project's packages (db/019): on site / slipping / milestones hit today
 };
 
 /** Dubai day boundaries as UTC ISO strings. */
@@ -28,13 +29,14 @@ export const todayDubai = () => new Date(Date.now() + 4 * 3600000).toISOString()
 export async function getProjectDay(projectId: string, day: string): Promise<ProjectDay | null> {
   const supabase = await createClient();
   const { start, end } = dayBounds(day);
-  const [{ data: p }, a, { data: rep }, { data: log }, { data: people }, { count: photos }] = await Promise.all([
+  const [{ data: p }, a, { data: rep }, { data: log }, { data: people }, { count: photos }, { data: pkgs }] = await Promise.all([
     supabase.from("projects_live").select("*").eq("id", projectId).maybeSingle(),
     getApprovedItems(projectId),
     supabase.from("site_reports").select("*").eq("project_id", projectId).eq("day", day).maybeSingle(),
     supabase.from("boq_progress").select("item_id, pct, prev_pct, by_id, at").gte("at", start).lt("at", end).order("at"),
     supabase.from("people").select("id, name"),
     supabase.from("site_photos").select("id", { count: "exact", head: true }).eq("project_id", projectId).eq("day", day),
+    supabase.from("packages_live").select("*").eq("project_id", projectId).eq("cancelled", false).order("sort"),
   ]);
   if (!p) return null;
   const project = p as Project;
@@ -63,7 +65,27 @@ export async function getProjectDay(projectId: string, day: string): Promise<Pro
     total: live.reduce((s, i) => s + i.amount, 0), installed: live.reduce((s, i) => s + i.amount * i.installed_pct / 100, 0), installedStart,
     itemsDone: live.filter((i) => i.installed_pct >= 100).length, itemsLive: live.length, hasBill: a.boqs.length > 0,
     photos: photos ?? 0,
+    packages: (pkgs ?? []) as Package[],
   };
+}
+
+const nice = (s: string) => title(s).replace(/\bMep\b/, "MEP").replace(/\bHvac\b/, "HVAC");
+/** Package lines for the message: milestones stamped today, what's on site, what's slipping. */
+function packageLines(d: ProjectDay): string[] {
+  const ks = d.packages;
+  if (!ks.length) return [];
+  const out: string[] = [];
+  const hit = (m: "awarded_on" | "approved_on" | "on_site_on" | "complete_on" | "snagged_on", label: string) => ks.filter((k) => k[m] === d.day).map((k) => `• ${nice(k.name)}${k.supplier ? ` (${k.supplier})` : ""} — ${label}`);
+  const today = [...hit("snagged_on", "snagged ✅"), ...hit("complete_on", "complete ✅"), ...hit("on_site_on", "started on site"), ...hit("approved_on", "approvals in"), ...hit("awarded_on", "awarded")];
+  const onSite = ks.filter((k) => k.status === "ON_SITE");
+  const slipping = ks.filter((k) => (k.slipping || k.forecast_late) && k.status !== "COMPLETE" && k.status !== "SNAGGED");
+  const done = ks.filter((k) => k.status === "COMPLETE" || k.status === "SNAGGED").length;
+  const awarded = ks.filter((k) => k.status !== "NOT_AWARDED").length;
+  out.push(`*Packages:* ${awarded}/${ks.length} awarded · ${onSite.length} on site · ${done} complete${slipping.length ? ` · ⚠️ ${slipping.length} slipping` : ""}`);
+  if (onSite.length) out.push(`_On site:_ ${onSite.slice(0, 6).map((k) => `${nice(k.name)}${k.supplier ? ` (${k.supplier})` : ""}${k.pct_complete ? ` ${k.pct_complete}%` : ""}`).join(", ")}${onSite.length > 6 ? ` +${onSite.length - 6}` : ""}`);
+  if (slipping.length) out.push(`_Slipping:_ ${slipping.slice(0, 5).map((k) => `${nice(k.name)}${k.days_overdue ? ` ${k.days_overdue}d` : " (forecast)"}`).join(", ")}${slipping.length > 5 ? ` +${slipping.length - 5}` : ""}`);
+  if (today.length) { out.push("_Today:_"); out.push(...today); }
+  return out;
 }
 
 const dmy = (d: string) => new Date(`${d}T12:00:00+04:00`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -88,6 +110,7 @@ export function formatProjectReport(d: ProjectDay, author: string): string {
   if (p.prog_next_due) prog.push(`next due ${dm(p.prog_next_due)}`);
   if (p.target_date) prog.push(`target ${dm(p.target_date)}`);
   if (prog.length) out.push(`*Programme:* ${prog.join(" · ")}${h && h.text !== "No programme" ? ` — ${h.text}` : ""}`);
+  out.push(...packageLines(d));
   if (d.lines.length) {
     out.push(""); out.push("*Progress today*");
     const show = d.lines.slice(0, 14);
@@ -120,13 +143,16 @@ export async function formatDigest(day: string): Promise<{ text: string; days: P
     if (overall != null) bits.push(`${pc(overall)} installed${delta > 0.05 ? ` (+${delta.toFixed(1)}%)` : ""}`);
     if (d.lines.length) bits.push(`${d.lines.length} item${d.lines.length === 1 ? "" : "s"} moved`);
     if (d.photos) bits.push(`${d.photos} photo${d.photos === 1 ? "" : "s"}`);
+    const onSite = d.packages.filter((k) => k.status === "ON_SITE").length, slip = d.packages.filter((k) => (k.slipping || k.forecast_late) && k.status !== "COMPLETE" && k.status !== "SNAGGED").length;
+    if (d.packages.length) bits.push(`${onSite} pkg on site${slip ? ` · ${slip} slipping` : ""}`);
     if (h) bits.push(h.text);
     if (p.target_date) bits.push(`target ${dm(p.target_date)}`);
     out.push(`*${title(p.name)}*${p.pm ? ` · ${title(p.pm)}` : ""}`);
     out.push(bits.length ? bits.join(" · ") : "no update");
     if (d.report?.done) out.push(d.report.done.trim().split("\n")[0]);
     if (d.report?.issues) out.push(`⚠️ ${d.report.issues.trim().split("\n")[0]}`);
-    if (!hasNotes(d.report) && !d.lines.length) out[out.length - 1] = "no report today";
+    const stamped = d.packages.some((k) => [k.awarded_on, k.approved_on, k.on_site_on, k.complete_on, k.snagged_on].includes(d.day));
+    if (!hasNotes(d.report) && !d.lines.length && !stamped) out[out.length - 1] = "no report today";
     out.push("");
   }
   return { text: out.join("\n").trim(), days };

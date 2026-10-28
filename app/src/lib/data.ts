@@ -1,12 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { cache } from "react";
-import type { Project, Person, Contractor, Me, TargetRevision } from "@/lib/model";
+import type { Project, Person, Contractor, Me, TargetRevision, Package, PackageCounts, PackageTrade, Supplier } from "@/lib/model";
 
 async function allProjects(): Promise<Project[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("projects_live").select("*").order("name");
+  const [{ data, error }, { data: counts }] = await Promise.all([
+    supabase.from("projects_live").select("*").order("name"),
+    supabase.from("project_package_counts").select("*"),
+  ]);
   if (error) throw new Error(`projects_live: ${error.message}`);
-  return (data ?? []) as Project[];
+  // package counts (db/019) ride on the project row so the board strip and the digest don't need a second query
+  const byProject = new Map(((counts ?? []) as PackageCounts[]).map((c) => [c.project_id, c]));
+  return ((data ?? []) as Project[]).map((p) => ({ ...p, pkg: byProject.get(p.id) ?? null }));
 }
 /** every project still in play: not removed (archived projects are included — the list filters them) */
 export const getProjects = cache(async function getProjects(): Promise<Project[]> {
@@ -90,3 +95,28 @@ export async function getEnquiryPasses(projectId: string): Promise<EnquiryPass[]
   const { data } = await supabase.from("enquiry_passes").select("*, from:people!enquiry_passes_from_id_fkey(name), to:people!enquiry_passes_to_id_fkey(name)").eq("project_id", projectId).order("passed_at", { ascending: false }).limit(20);
   return (data ?? []) as EnquiryPass[];
 }
+
+// ---------- packages (db/019) ----------
+export async function getPackages(projectId: string): Promise<Package[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("packages_live").select("*").eq("project_id", projectId).order("sort");
+  if (error) throw new Error(`packages_live: ${error.message}`);
+  return (data ?? []) as Package[];
+}
+/** every package on every live (Won → Completed, not removed, not archived) project — the Packages tab */
+export async function getAllPackages(): Promise<Package[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("packages_live").select("*").in("project_status", ["WON", "PRE_MOB", "LIVE", "COMPLETED", "ON_HOLD"]).is("project_deleted_at", null).is("project_archived_at", null).order("sort");
+  if (error) throw new Error(`packages_live: ${error.message}`);
+  return (data ?? []) as Package[];
+}
+export const getTrades = cache(async function getTrades(): Promise<PackageTrade[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("package_trades").select("*").eq("is_active", true).order("sort_order");
+  return (data ?? []) as PackageTrade[];
+});
+export const getSuppliers = cache(async function getSuppliers(): Promise<Supplier[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("suppliers").select("*").eq("is_active", true).order("name");
+  return (data ?? []) as Supplier[];
+});

@@ -61,4 +61,11 @@ const meeting = { id:'m1', title:'Client design review', project_id:null, projec
 t('meeting -> attendees + booker, not the editor', names(meetingRecipients(meeting, [ch({ project_id:null, meeting_id:'m1', kind:'meeting_field', field:'when', changed_by:'office' })], people)), 'MD, PM1');
 t('meeting cancelled wording', describe(ch({ project_id:null, meeting_id:'m1', kind:'meeting_cancelled' })), 'Meeting cancelled');
 
+// 10. Packages (db/019): the site engineer changes a package on a live job -> PM hears, not the engineer; wording
+const pkgChange = [ch({ kind:'package_status', field:'Mep Works', old_value:'AWARDED', new_value:'ON_SITE', changed_by:'site1' })];
+t('package change -> PM, not the site engineer who did it', names(recipients(live, pkgChange, people, new Set())), 'PM1');
+t('package status wording', describe(pkgChange[0], live), 'Mep Works: awarded → on site');
+t('package supplier wording', describe(ch({ kind:'package_supplier', field:'Joinery', old_value:null, new_value:'ACME JOINERY LLC' })), 'Joinery: subcontractor — → ACME JOINERY LLC');
+t('package value wording', describe(ch({ kind:'package_value', field:'Stone', old_value:'100000', new_value:'120000' })), 'Stone: value AED 100,000 → AED 120,000');
+
 process.exit(fail ? 1 : 0);

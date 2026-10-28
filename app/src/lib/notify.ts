@@ -14,6 +14,7 @@ type Proj = { id: string; enquiry_no: string | null; name: string; client: strin
 type Person = { id: string; name: string; full_name: string | null; email: string | null; role: string; is_active: boolean; notify_on_award: boolean };
 type Meet = { id: string; title: string; project_id: string | null; project_name: string | null; location: "ROOM" | "SITE" | "ONLINE"; meeting_date: string; start_time: string; end_time: string; notes: string | null; cancelled: boolean; created_by: string | null; attendee_ids: string[]; attendees: string[] };
 const LOC: Record<string, string> = { ROOM: "Office room", SITE: "On site", ONLINE: "Online" };
+const PKG_STATUS: Record<string, string> = { NOT_AWARDED: "not awarded", AWARDED: "awarded", APPROVED: "approvals done", ON_SITE: "on site", COMPLETE: "complete", SNAGGED: "snagged", CANCELLED: "cancelled" };
 const tc = (n: string) => n.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 
 export function admin() {
@@ -80,6 +81,15 @@ export function describe(c: Change, p?: Proj): string {
       return `${f}: ${v(c.old_value)} → ${v(c.new_value)}`;
     }
     case "programme": return `Programme — ${c.field}: ${c.old_value ?? "—"} → ${c.new_value ?? "—"}`;
+    // packages (db/019)
+    case "package_created": return `Package added — ${c.field}`;
+    case "package_cancelled": return `Package cancelled — ${c.field}`;
+    case "package_status": return `${c.field}: ${PKG_STATUS[c.old_value ?? ""] ?? c.old_value ?? "—"} → ${PKG_STATUS[c.new_value ?? ""] ?? c.new_value ?? "—"}`;
+    case "package_supplier": return `${c.field}: subcontractor ${c.old_value ?? "—"} → ${c.new_value ?? "—"}`;
+    case "package_value": return `${c.field}: value ${fmtAed(c.old_value)} → ${fmtAed(c.new_value)}`;
+    case "package_owner": return `${c.field}: owner ${tc(c.old_value ?? "—")} → ${tc(c.new_value ?? "—")}`;
+    case "package_planned": return `${c.field}: planned ${c.old_value ?? "—"} → ${c.new_value ?? "—"}`;
+    case "package_approval": return `${c.field}: ${c.old_value ?? "approval"} approved ${fmtDate(c.new_value)}`;
     case "checkin": return `Weekly check-in: ${c.field === "ON_TRACK" ? "On track" : c.field === "SLIPPING" ? "Slipping" : "Blocked"}${c.new_value ? ` — ${c.new_value}` : ""}`;
     default: return `${FIELD[c.field ?? ""] ?? c.field}: ${value(c.field, c.old_value)} → ${value(c.field, c.new_value)}`;
   }

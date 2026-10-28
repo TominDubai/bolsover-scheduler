@@ -3,6 +3,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { STAGES, SIDE, aedS, fmtDShort, title, ini, tone, delayText, health, type Project, type Status } from "@/lib/model";
 import { setStatus, archiveProject } from "@/app/actions";
+import { PackageProgress } from "@/components/MilestoneStrip";
+import type { PackageCounts } from "@/lib/model";
 
 export default function Board({ projects, canEdit }: { projects: Project[]; canEdit: boolean }) {
   const router = useRouter();
@@ -63,10 +65,22 @@ function Card({ p, canEdit, dragging, onDragStart, onDragEnd }: { p: Project; ca
         <span className="val">{p.project_value ? aedS(p.project_value) : "—"}</span>
       </div>
       <div className="dates"><span>Start {fmtDShort(p.start_date)}</span><span>Target {fmtDShort(p.target_date)}{p.target_rev != null && p.target_rev > 0 && <span className="rev">R{p.target_rev}</span>}</span></div>
+      {p.pkg && p.pkg.pkg_total > 0 && <PackagesStrip c={p.pkg} />}
       {h && <div className={`site ${h.tone}`}><span className={`dot ${h.tone}`} />{h.text}{p.prog_pkgs ? <small>{p.prog_done}/{p.prog_pkgs} · {p.prog_pct ?? 0}%</small> : null}</div>}
       {canEdit && p.status === "COMPLETED" && (
         <button type="button" className="btn sm ghost archive" onClick={(e) => { e.stopPropagation(); archiveProject(p.id, true).then(() => router.refresh()); }}>Archive</button>
       )}
     </article>
+  );
+}
+
+/** Tiny package strip on the card: complete / on site / awarded / not awarded (db/019). */
+function PackagesStrip({ c }: { c: PackageCounts }) {
+  const appr = Math.max(c.pkg_awarded - c.pkg_on_site - c.pkg_complete, 0);
+  return (
+    <div className="card-items" title={`${c.pkg_total} packages: ${c.pkg_complete} complete, ${c.pkg_on_site} on site, ${appr} awarded, ${c.pkg_not_awarded} not awarded${c.pkg_slipping ? ` · ${c.pkg_slipping} slipping` : ""}`}>
+      <PackageProgress complete={c.pkg_complete} onSite={c.pkg_on_site} awarded={c.pkg_awarded} total={c.pkg_total} />
+      <small>{c.pkg_awarded}/{c.pkg_total} awarded{c.pkg_on_site ? ` · ${c.pkg_on_site} on site` : ""}{c.pkg_slipping ? <b className="crit"> · {c.pkg_slipping} slipping</b> : null}</small>
+    </div>
   );
 }
