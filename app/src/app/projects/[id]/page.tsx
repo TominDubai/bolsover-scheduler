@@ -8,8 +8,10 @@ import Programme from "@/components/Programme";
 import Checkin from "@/components/Checkin";
 import BoqPanel from "@/components/BoqPanel";
 import ArchiveBar from "@/components/ArchiveBar";
+import RemoveProject, { RemovedBanner } from "@/components/RemoveProject";
+import TargetRevisions from "@/components/TargetRevisions";
 import { getBoqSummaries, getContract, getValuations, canSeeCost } from "@/lib/boq";
-import { getProject, getPeople, getContractors, getMe } from "@/lib/data";
+import { getProject, getPeople, getContractors, getMe, getTargetRevisions, getProjectWatchers } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
 import { STAGES, ORDER, LABEL, aed, fmtD, title, tone, delayText, isQuote, type Variation, type History, type Package, type Activity, type Checkin as CheckinRow, type Person } from "@/lib/model";
 
@@ -18,13 +20,13 @@ export const dynamic = "force-dynamic";
 async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
-  const [p, people, contractors, me, { data: vos }, { data: hist }, { data: pkgs }, { data: cks }, boqs, contract, valuations, { data: meRow }] = await Promise.all([
+  const [p, people, contractors, me, { data: vos }, { data: hist }, { data: pkgs }, { data: cks }, boqs, contract, valuations, { data: meRow }, revisions, watchers] = await Promise.all([
     getProject(id), getPeople(), getContractors(), getMe(),
     supabase.from("variations").select("*").eq("project_id", id).order("vo_no"),
     supabase.from("status_history").select("*, who:people(name)").eq("project_id", id).order("changed_at", { ascending: false }),
     supabase.from("programme_packages").select("*").eq("project_id", id).order("sort"),
     supabase.from("checkins").select("*, who:people(name)").eq("project_id", id).order("created_at", { ascending: false }).limit(20),
-    getBoqSummaries(id), getContract(id), getValuations(id), supabase.rpc("me"),
+    getBoqSummaries(id), getContract(id), getValuations(id), supabase.rpc("me"), getTargetRevisions(id), getProjectWatchers(id),
   ]);
   const packages = (pkgs ?? []) as Package[];
   const { data: acts } = packages.length
@@ -32,7 +34,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
     : { data: [] as Activity[] };
   if (!p) notFound();
   const t = tone(p);
-  const canEdit = me.canProjects || (me.canEstimation && isQuote(p.status));
+  const canEdit = !p.deleted_at && (me.canProjects || (me.canEstimation && isQuote(p.status)));
   const history = (hist ?? []) as (History & { who: { name: string } | null })[];
   return (
     <Shell>
@@ -42,7 +44,8 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
           <div><h1>{title(p.name)}</h1><div className="client">{title(p.client)}{p.contractor ? ` · via ${p.contractor}` : ""}</div></div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span className={`status s-${p.status}`}>{LABEL[p.status]}</span><span className={`pill ${t}`}>{delayText(p)}</span></div>
         </div>
-        {(p.archived_at || p.status === "COMPLETED") && <ArchiveBar projectId={p.id} archivedAt={p.archived_at} canEdit={me.canProjects} />}
+        {p.deleted_at && <RemovedBanner project={p} canManage={me.canTeam} />}
+        {!p.deleted_at && (p.archived_at || p.status === "COMPLETED") && <ArchiveBar projectId={p.id} archivedAt={p.archived_at} canEdit={me.canProjects} />}
         <div>
           <div className="stagebar">{STAGES.map(([k]) => <span key={k} className={(ORDER[k] <= ORDER[p.status] && ORDER[p.status] <= ORDER.COMPLETED ? "on " : "") + (k === p.status ? "cur" : "")} />)}</div>
           <div className="stagebar-labels">{STAGES.map(([k, l]) => <span key={k}>{l}</span>)}</div>
@@ -55,26 +58,31 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
               <dt>Site engineer</dt><dd>{p.site_engineer ? title(p.site_engineer) : "—"}</dd>
               <dt>Enquiry received</dt><dd>{fmtD(p.received_date)}</dd>
               <dt>Project start</dt><dd>{fmtD(p.start_date)}</dd>
-              <dt>Target completion</dt><dd>{fmtD(p.target_date)}{p.days_to_completion != null && <small> · {p.days_to_completion} days programme</small>}</dd>
+              <dt>Target completion</dt><dd>{fmtD(p.target_date)}{p.target_rev != null && p.target_rev > 0 && <span className="rev">Rev {p.target_rev}</span>}{p.days_to_completion != null && <small> · {p.days_to_completion} days programme</small>}</dd>
               <dt>Completed</dt><dd>{fmtD(p.completed_date)}</dd>
               <dt>Duration</dt><dd>{p.duration_days != null ? `${p.duration_days} days${p.completed_date ? "" : " so far"}` : "—"}</dd>
               <dt>Project value</dt><dd>{aed(p.project_value)} <small>inc. VAT · {p.vo_count} VO{p.vo_count === 1 ? "" : "s"}</small></dd>
               <dt>In this stage since</dt><dd>{fmtD(p.status_since)}</dd>
+              <dt>Updates go to</dt><dd>{(() => {
+                const ids = [p.pm_id, p.pm2_id, p.site_engineer_id, ...watchers].filter(Boolean) as string[];
+                const names = [...new Set(ids)].map((pid) => people.find((x) => x.id === pid)).filter(Boolean).map((x) => title(x!.name));
+                return names.length ? names.join(", ") : <i style={{ color: "var(--fg3)" }}>nobody yet — assign a PM and a site engineer</i>;
+              })()}</dd>
             </dl>
           </div>
-          <Variations projectId={p.id} signedQuote={p.signed_quote} vos={(vos ?? []) as Variation[]} canEdit={me.canProjects} />
+          <Variations projectId={p.id} signedQuote={p.signed_quote} vos={(vos ?? []) as Variation[]} canEdit={me.canProjects && !p.deleted_at} />
         </div>
         <BoqPanel projectId={p.id} boqs={boqs} contract={contract} valuations={valuations} canEdit={canEdit} showCost={canSeeCost(meRow as Person | null)} isLive={ORDER[p.status] >= ORDER.WON && ORDER[p.status] <= ORDER.COMPLETED} />
         {(p.status === "LIVE" || p.status === "PRE_MOB") && (
           <Checkin p={p} checkins={(cks ?? []) as CheckinRow[]} canPost={me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id)} myId={me.id} />
         )}
         {(packages.length > 0 || ORDER[p.status] >= ORDER.WON) && ORDER[p.status] <= ORDER.COMPLETED && (
-          <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects} />
+          <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects && !p.deleted_at} />
         )}
         {canEdit ? (
           <div className="panel">
             <h2>Edit project</h2>
-            <ProjectForm project={p} people={people} contractors={contractors} estimationOnly={!me.canProjects} />
+            <ProjectForm project={p} people={people} contractors={contractors} estimationOnly={!me.canProjects} watchers={watchers} />
           </div>
         ) : (
           <div className="panel"><h2>Details</h2><dl>
@@ -86,6 +94,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
             <dt>Notes</dt><dd>{p.notes ?? "—"}</dd>
           </dl><p className="note">You can view this project but not edit it.</p></div>
         )}
+        <TargetRevisions revisions={revisions} current={p.target_date} canEdit={canEdit && me.canProjects} />
         <div className="panel">
           <h2>Status history</h2>
           {history.length === 0 ? <span style={{ color: "var(--fg3)" }}>No changes recorded yet.</span> : (
@@ -100,6 +109,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
             </ul>
           )}
         </div>
+        {me.canTeam && !p.deleted_at && <RemoveProject project={p} />}
       </div>
     </Shell>
   );

@@ -109,7 +109,7 @@ export function formatProjectReport(d: ProjectDay, author: string): string {
 /** One message covering every live site — for Tom and the office. */
 export async function formatDigest(day: string): Promise<{ text: string; days: ProjectDay[] }> {
   const supabase = await createClient();
-  const { data } = await supabase.from("projects_live").select("id, name, status").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null).order("name");
+  const { data } = await supabase.from("projects_live").select("id, name, status").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null).is("deleted_at", null).order("name");
   const days = (await Promise.all(((data ?? []) as { id: string }[]).map((p) => getProjectDay(p.id, day)))).filter((x): x is ProjectDay => !!x);
   const out: string[] = [`*Bolsover sites — ${dmy(day)}*`, ""];
   for (const d of days) {

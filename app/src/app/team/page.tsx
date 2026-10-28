@@ -13,7 +13,8 @@ async function Inner_TeamPage() {
   if (error) throw new Error(`people: ${error.message}`);
   const people = (data ?? []) as Person[];
   const active = people.filter((p) => p.is_active);
-  const noEmail = active.filter((p) => !p.email);
+  const noEmail = active.filter((p) => !p.email && p.can_sign_in);
+  const signings = active.filter((p) => p.notify_on_award);
   return (
     <Shell active="team">
       <section className="summary">
@@ -21,8 +22,9 @@ async function Inner_TeamPage() {
           <div className="stat"><b>{active.length}</b><span>on the team</span></div>
           <div className={`stat${noEmail.length ? " crit" : ""}`}><b>{noEmail.length}</b><span>without an email — get no updates</span></div>
           <div className="stat"><b>{active.filter((p) => p.whatsapp).length}</b><span>with WhatsApp</span></div>
+          <div className={`stat${signings.length ? "" : " crit"}`}><b>{signings.length}</b><span>hear about signings</span></div>
         </div>
-        <p className="note teamnote">Anyone with an email here can sign in and gets an update email when their projects change. People with the Team permission (Tom and Mye to start) can add team members and set what each person can edit: Quotes (the Estimation tab), Projects (the Board from Won onwards), Team (this page).</p>
+        <p className="note teamnote">Anyone with an email here can sign in and gets one quiet update email (at most every 10 minutes) when their projects change. People with the Team permission can add team members and set what each person can edit — Quotes (Estimation), Projects (the Board from Won onwards), Team (this page) — and who hears about signings and escalations. WhatsApp-only staff have no email and don’t sign in.</p>
       </section>
       <main><TeamTable people={people} canEdit={me.canTeam} /></main>
     </Shell>

@@ -26,7 +26,7 @@ export const QUOTE_LABEL: Record<QuoteStage, string> = Object.fromEntries(QUOTE_
 
 export type Project = {
   id: string; enquiry_no: string | null; name: string; client: string | null;
-  contractor_id: string | null; pm_id: string | null; pm2_id: string | null; site_engineer_id: string | null; technical_site_engineer_id: string | null;
+  contractor_id: string | null; pm_id: string | null; pm2_id: string | null; site_engineer_id: string | null;
   status: Status; difficulty: number | null;
   received_date: string | null; start_date: string | null; target_date: string | null; completed_date: string | null;
   signed_quote: number; notes: string | null; updated_at: string; location: string | null; job_ref: string | null; archived_at: string | null;
@@ -38,7 +38,12 @@ export type Project = {
   // programme health + last PM check-in (null when no programme loaded / no check-in yet)
   prog_pkgs: number | null; prog_done: number | null; prog_behind: number | null; prog_pct: number | null; prog_next_due: string | null; prog_forecast_end: string | null;
   checkin_status: CheckinStatus | null; checkin_note: string | null; checkin_at: string | null; checkin_by: string | null;
+  // removal (db/016): off every list, nothing deleted; deleted_by_name resolved by the view
+  deleted_at: string | null; deleted_reason: string | null; deleted_by: string | null; deleted_by_name: string | null;
+  // target completion revisions (db/016): highest rev_no = current, Rev 0 = original programme
+  target_rev: number | null; target_rev0_date: string | null;
 };
+export type TargetRevision = { id: number; project_id: string; rev_no: number; target_date: string | null; prev_date: string | null; reason: string | null; set_by: string | null; set_at: string; who?: { name: string } | null };
 export type CheckinStatus = "ON_TRACK" | "SLIPPING" | "BLOCKED";
 export const CHECKIN_LABEL: Record<CheckinStatus, string> = { ON_TRACK: "On track", SLIPPING: "Slipping", BLOCKED: "Blocked" };
 export type Checkin = { id: string; project_id: string; person_id: string | null; status: CheckinStatus; note: string | null; week_start: string; created_at: string; who?: { name: string } | null };
@@ -56,8 +61,22 @@ export function health(p: Pick<Project, "status" | "prog_pkgs" | "prog_behind" |
   if (p.checkin_status === "ON_TRACK" && !stale) return { tone: "ok", text: "On track" };
   return { tone: "ok", text: `${p.prog_pct ?? 0}% · no check-in` };
 }
-export type Person = { id: string; name: string; full_name: string | null; role: string; email: string | null; whatsapp: string | null; is_active: boolean; can_edit_estimation: boolean; can_edit_projects: boolean; can_manage_team: boolean };
-export type Me = { id: string | null; name: string; canEstimation: boolean; canProjects: boolean; canTeam: boolean };
+export type Person = {
+  id: string; name: string; full_name: string | null; role: string; email: string | null; whatsapp: string | null; position: string | null; is_active: boolean;
+  can_edit_estimation: boolean; can_edit_projects: boolean; can_manage_team: boolean;
+  is_admin: boolean; notify_on_award: boolean; handles_escalations: boolean; can_sign_in: boolean;
+};
+export type Me = { id: string | null; name: string; role: string; canEstimation: boolean; canProjects: boolean; canTeam: boolean; isAdmin: boolean };
+
+/** Sort key for Bolsover enquiry numbers `BBC/MMYYYY/NNNNN`: year, month, serial. Anything else sorts by its digits. */
+export function enqKey(no: string | null): number {
+  if (!no) return Number.MAX_SAFE_INTEGER;
+  const m = no.trim().match(/^BBC\/(\d{2})(\d{4})\/(\d{1,6})/i);
+  if (m) return parseInt(m[2]) * 1e8 + parseInt(m[1]) * 1e6 + parseInt(m[3]);
+  const d = no.replace(/\D/g, "");
+  return d ? parseInt(d.slice(-9)) : Number.MAX_SAFE_INTEGER;
+}
+export const byEnq = <T extends { enquiry_no: string | null; name: string }>(a: T, b: T) => enqKey(a.enquiry_no) - enqKey(b.enquiry_no) || a.name.localeCompare(b.name);
 export type Contractor = { id: string; name: string };
 export type Variation = { id: string; project_id: string; vo_no: number; description: string | null; value: number; approved_on: string | null };
 export type Package = {

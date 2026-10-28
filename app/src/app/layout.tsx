@@ -4,7 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Bolsover Projects",
   description: "Bolsover Building Contracting project pipeline — quotes to completion.",
-  icons: { icon: "/bolsover-mark.svg" },
+  icons: { icon: "/icon.png", apple: "/icons/apple-touch-icon.png" },
+  applicationName: "Bolsover Projects",
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Bolsover" },
+  formatDetection: { telephone: false },
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#FFFFFF" };
 

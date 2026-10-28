@@ -66,7 +66,7 @@ export async function runAlerts(opts: { dryRun?: boolean; force?: string } = {})
   const week = weekStart();
 
   const [{ data: projs }, { data: ppl }, { data: pkgs }, { data: recent }] = await Promise.all([
-    db.from("projects_live").select("id, enquiry_no, name, client, status, pm_id, pm2_id, site_engineer_id, target_date, prog_pkgs, prog_behind, prog_done, prog_pct, prog_forecast_end, checkin_status, checkin_note, checkin_at, checkin_by").in("status", ["LIVE", "PRE_MOB"]),
+    db.from("projects_live").select("id, enquiry_no, name, client, status, pm_id, pm2_id, site_engineer_id, target_date, prog_pkgs, prog_behind, prog_done, prog_pct, prog_forecast_end, checkin_status, checkin_note, checkin_at, checkin_by").in("status", ["LIVE", "PRE_MOB"]).is("deleted_at", null),
     db.from("people").select("id, name, full_name, email, is_active, role").eq("is_active", true),
     db.from("programme_packages").select("id, project_id, name, planned_start, planned_finish, forecast_finish, actual_start, actual_finish, pct_complete, note"),
     db.from("alerts").select("rule, project_id, sent_to, sent_at").gte("sent_at", new Date(Date.now() - 6 * 86400000).toISOString()),
@@ -145,7 +145,7 @@ export async function runReportNudge(opts: { dryRun?: boolean } = {}) {
   const today = dubai().toISOString().slice(0, 10);
   const dayStart = new Date(`${today}T00:00:00+04:00`).toISOString();
   const [{ data: projs }, { data: ppl }, { data: reps }, { data: prog }, { data: done }] = await Promise.all([
-    db.from("projects_live").select("id, enquiry_no, name, client, status, pm_id, pm2_id, site_engineer_id").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null),
+    db.from("projects_live").select("id, enquiry_no, name, client, status, pm_id, pm2_id, site_engineer_id").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null).is("deleted_at", null),
     db.from("people").select("id, name, full_name, email, is_active, role").eq("is_active", true),
     db.from("site_reports").select("project_id, done, tomorrow, issues, sent_at").eq("day", today),
     db.from("boq_progress").select("item_id, boq_items!inner(boq_id, boqs!inner(project_id))").gte("at", dayStart),
@@ -184,7 +184,7 @@ export async function runReportNudge(opts: { dryRun?: boolean } = {}) {
 export async function runAnnouncement(opts: { dryRun?: boolean; subject: string; html: string }) {
   const db = admin();
   const [{ data: projs }, { data: ppl }] = await Promise.all([
-    db.from("projects_live").select("id, pm_id, pm2_id, site_engineer_id").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null),
+    db.from("projects_live").select("id, pm_id, pm2_id, site_engineer_id").in("status", ["LIVE", "PRE_MOB"]).is("archived_at", null).is("deleted_at", null),
     db.from("people").select("id, name, full_name, email, is_active, role").eq("is_active", true),
   ]);
   const people = new Map(((ppl ?? []) as Person[]).map((p) => [p.id, p]));

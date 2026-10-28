@@ -28,11 +28,10 @@ export default function Board({ projects, canEdit }: { projects: Project[]; canE
   // Pending / Quoted live on the Estimation tab; the board starts at Won.
   const cols = [...STAGES.filter(([k]) => k !== "PENDING" && k !== "QUOTED"), ...SIDE].map(([k, l]) => {
     const items = rows.filter((p) => p.status === k).sort((a, b) => (b.days_delayed ?? -9e9) - (a.days_delayed ?? -9e9));
-    const val = items.reduce((s, p) => s + (p.project_value || 0), 0);
     return (
       <section key={k} className={`col${k === "ON_HOLD" || k === "LOST" || k === "REJECTED" ? " side" : ""}${over === k ? " over" : ""}${items.length === 0 && over !== k && dragId === null ? " collapsed" : ""}`}
         onDragOver={(e) => { e.preventDefault(); if (over !== k) setOver(k); }} onDragLeave={() => setOver(null)} onDrop={() => drop(k)}>
-        <header><h2>{l}</h2><span className="count">{items.length}</span><span className="colval">{val ? aedS(val) : ""}</span></header>
+        <header><h2>{l}</h2><span className="count">{items.length}</span></header>
         <div className="cards">
           {items.length === 0 && <div className="empty">{canEdit ? "Drop a project here" : "Nothing here"}</div>}
           {items.map((p) => <Card key={p.id} p={p} canEdit={canEdit} dragging={dragId === p.id} onDragStart={() => setDragId(p.id)} onDragEnd={() => { setDragId(null); setOver(null); }} />)}
@@ -63,7 +62,7 @@ function Card({ p, canEdit, dragging, onDragStart, onDragEnd }: { p: Project; ca
         <span className="who"><b className="av">{ini(p.pm)}</b>{p.pm ? title(p.pm) : "No PM"}{p.pm2 ? ` + ${title(p.pm2)}` : ""}</span>
         <span className="val">{p.project_value ? aedS(p.project_value) : "—"}</span>
       </div>
-      <div className="dates"><span>Start {fmtDShort(p.start_date)}</span><span>Target {fmtDShort(p.target_date)}</span></div>
+      <div className="dates"><span>Start {fmtDShort(p.start_date)}</span><span>Target {fmtDShort(p.target_date)}{p.target_rev != null && p.target_rev > 0 && <span className="rev">R{p.target_rev}</span>}</span></div>
       {h && <div className={`site ${h.tone}`}><span className={`dot ${h.tone}`} />{h.text}{p.prog_pkgs ? <small>{p.prog_done}/{p.prog_pkgs} · {p.prog_pct ?? 0}%</small> : null}</div>}
       {canEdit && p.status === "COMPLETED" && (
         <button type="button" className="btn sm ghost archive" onClick={(e) => { e.stopPropagation(); archiveProject(p.id, true).then(() => router.refresh()); }}>Archive</button>

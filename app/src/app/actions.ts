@@ -36,6 +36,7 @@ function projectFields(fd: FormData) {
   if (has("received_date")) out.received_date = nz(fd.get("received_date"));
   if (has("start_date")) out.start_date = nz(fd.get("start_date"));
   if (has("target_date")) out.target_date = nz(fd.get("target_date"));
+  if (has("target_change_reason")) out.target_change_reason = nz(fd.get("target_change_reason"));
   if (has("completed_date")) out.completed_date = nz(fd.get("completed_date"));
   if (has("signed_quote")) out.signed_quote = num(fd.get("signed_quote"));
   if (has("notes")) out.notes = nz(fd.get("notes"));
@@ -111,12 +112,27 @@ export async function createEnquiry(_prev: unknown, fd: FormData) {
   return { ok: true, enquiry_no: data.enquiry_no as string, id: data.id as string };
 }
 
+/** "Also keep updated" (db/016): the people tagged on a project, over and above PM / second PM / site engineer. */
+async function syncWatchers(projectId: string, fd: FormData) {
+  if (!fd.has("watchers_present")) return;               // form didn't carry the control — leave the list alone
+  // (an all-unchecked checkbox group posts nothing, so the hidden marker is what tells us it was there)
+  const supabase = await createClient();
+  const want = [...new Set(fd.getAll("watchers").map(String).filter(Boolean))];
+  const { data: cur } = await supabase.from("project_watchers").select("person_id").eq("project_id", projectId);
+  const have = new Set(((cur ?? []) as { person_id: string }[]).map((r) => r.person_id));
+  const add = want.filter((id) => !have.has(id));
+  const drop = [...have].filter((id) => !want.includes(id));
+  if (add.length) await supabase.from("project_watchers").insert(add.map((person_id) => ({ project_id: projectId, person_id })));
+  if (drop.length) await supabase.from("project_watchers").delete().eq("project_id", projectId).in("person_id", drop);
+}
+
 export async function saveProject(id: string, _prev: unknown, fd: FormData) {
   const supabase = await createClient();
   const fields = projectFields(fd);
   if (fields.name === "") return { error: "Project name is required." };
   const { error } = await supabase.from("projects").update(fields).eq("id", id);
   if (error) return { error: error.message };
+  await syncWatchers(id, fd);
   revalidatePath("/board"); revalidatePath("/list"); revalidatePath(`/projects/${id}`);
   return { ok: true, at: new Date().toISOString() };
 }
@@ -127,8 +143,28 @@ export async function createProject(_prev: unknown, fd: FormData) {
   if (!fields.name) return { error: "Project name is required." };
   const { data, error } = await supabase.from("projects").insert(fields as { name: string }).select("id").single();
   if (error) return { error: error.message };
+  await syncWatchers(data.id as string, fd);
   revalidatePath("/board"); revalidatePath("/list");
   redirect(`/projects/${data.id}`);
+}
+
+// ---------- remove / restore (soft delete, db/016) ----------
+export async function removeProject(id: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  const reason = nz(fd.get("reason"));
+  if (!reason) return { error: "Say why it's being removed (e.g. duplicate, entered by mistake, test)." };
+  const { error } = await supabase.from("projects").update({ deleted_at: new Date().toISOString(), deleted_reason: reason }).eq("id", id);
+  if (error) return { error: error.message };
+  bust(id); revalidatePath("/report");
+  redirect(`/list?show=removed&done=${id}`);
+}
+
+export async function restoreProject(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.from("projects").update({ deleted_at: null }).eq("id", id);
+  if (error) return { error: error.message };
+  bust(id); revalidatePath("/report");
+  return { ok: true };
 }
 
 export async function addVariation(projectId: string, _prev: unknown, fd: FormData) {
@@ -177,8 +213,9 @@ export async function savePerson(id: string, _prev: unknown, fd: FormData) {
   const supabase = await createClient();
   try {
     const role = nz(fd.get("role")); if (role && !ROLES.includes(role)) return { error: "Pick a role." };
-    const patch = { full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")), is_active: fd.get("is_active") === "on",
-      ...(role ? { role } : {}), can_edit_estimation: fd.get("can_edit_estimation") === "on", can_edit_projects: fd.get("can_edit_projects") === "on", can_manage_team: fd.get("can_manage_team") === "on" };
+    const patch = { full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")), position: nz(fd.get("position")), is_active: fd.get("is_active") === "on",
+      ...(role ? { role } : {}), can_edit_estimation: fd.get("can_edit_estimation") === "on", can_edit_projects: fd.get("can_edit_projects") === "on", can_manage_team: fd.get("can_manage_team") === "on",
+      notify_on_award: fd.get("notify_on_award") === "on", handles_escalations: fd.get("handles_escalations") === "on", can_sign_in: fd.get("whatsapp_only") !== "on" };
     const { error } = await supabase.from("people").update(patch).eq("id", id);
     if (error) return { error: error.message.includes("people_email_key") ? "Another person already has that email." : error.message.includes("own team permission") ? "You can't remove your own Team permission." : error.message };
   } catch (e) { return { error: (e as Error).message }; }
@@ -190,11 +227,12 @@ export async function addPerson(_prev: unknown, fd: FormData) {
   const supabase = await createClient();
   const name = (nz(fd.get("name")) ?? "").toUpperCase();
   const role = nz(fd.get("role")) ?? "";
-  if (!name) return { error: "Short name is required (the name shown on cards, e.g. BASIM)." };
+  if (!name) return { error: "Short name is required (the name shown on cards)." };
   if (!ROLES.includes(role)) return { error: "Pick a role." };
   try {
-    const { error } = await supabase.from("people").insert({ name, role, full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")),
-      can_edit_estimation: fd.get("can_edit_estimation") === "on", can_edit_projects: fd.get("can_edit_projects") === "on", can_manage_team: fd.get("can_manage_team") === "on" });
+    const { error } = await supabase.from("people").insert({ name, role, full_name: nz(fd.get("full_name")), email: email(fd.get("email")), whatsapp: phone(fd.get("whatsapp")), position: nz(fd.get("position")),
+      can_edit_estimation: fd.get("can_edit_estimation") === "on", can_edit_projects: fd.get("can_edit_projects") === "on", can_manage_team: fd.get("can_manage_team") === "on",
+      notify_on_award: fd.get("notify_on_award") === "on", handles_escalations: fd.get("handles_escalations") === "on", can_sign_in: fd.get("whatsapp_only") !== "on" });
     if (error) return { error: error.message.includes("people_name_key") ? `${name} already exists.` : error.message.includes("people_email_key") ? "Another person already has that email." : error.message };
   } catch (e) { return { error: (e as Error).message }; }
   revalidatePath("/team");

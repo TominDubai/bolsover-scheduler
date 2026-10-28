@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   );
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  const isPublic = path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/api/") || path.startsWith("/p/"); // /p = public photo gallery (unguessable project id + day); every /api route checks its own NOTIFY_SECRET bearer token
+  const isPublic = path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/api/") || path.startsWith("/p/") || path === "/offline"; // /p = public photo gallery (unguessable project id + day); every /api route checks its own NOTIFY_SECRET bearer token
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
@@ -34,5 +34,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|.*\\.(?:svg|png|jpg|ico)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|ico)$).*)"],
 };

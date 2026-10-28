@@ -6,3 +6,5 @@ design/node_modules/
 design/package*.json
 
 !app/public/*.png
+
+!app/public/icons/*.png

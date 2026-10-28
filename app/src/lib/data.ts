@@ -1,12 +1,20 @@
 import { createClient } from "@/lib/supabase/server";
 import { cache } from "react";
-import type { Project, Person, Contractor, Me } from "@/lib/model";
+import type { Project, Person, Contractor, Me, TargetRevision } from "@/lib/model";
 
-export const getProjects = cache(async function getProjects(): Promise<Project[]> {
+async function allProjects(): Promise<Project[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("projects_live").select("*").order("name");
   if (error) throw new Error(`projects_live: ${error.message}`);
   return (data ?? []) as Project[];
+}
+/** every project still in play: not removed (archived projects are included — the list filters them) */
+export const getProjects = cache(async function getProjects(): Promise<Project[]> {
+  return (await allProjects()).filter((p) => !p.deleted_at);
+});
+/** projects someone has removed — shown only on the List's "Removed" view, where they can be restored */
+export const getRemovedProjects = cache(async function getRemovedProjects(): Promise<Project[]> {
+  return (await allProjects()).filter((p) => !!p.deleted_at).sort((a, b) => (b.deleted_at! < a.deleted_at! ? -1 : 1));
 });
 export async function getProject(id: string): Promise<Project | null> {
   const supabase = await createClient();
@@ -34,7 +42,7 @@ export const getMe = cache(async function getMe(): Promise<Me> {
   const { data, error } = await supabase.rpc("me");
   if (error) throw new Error(`me(): ${error.message}`);
   const p = data as Person | null;
-  return { id: p?.id ?? null, name: p?.name ?? "", canEstimation: !!p?.can_edit_estimation, canProjects: !!p?.can_edit_projects, canTeam: !!p?.can_manage_team };
+  return { id: p?.id ?? null, name: p?.name ?? "", role: p?.role ?? "", canEstimation: !!p?.can_edit_estimation, canProjects: !!p?.can_edit_projects, canTeam: !!p?.can_manage_team, isAdmin: !!p?.is_admin };
 });
 
 export function applyFilters<T extends { name: string; client: string | null; enquiry_no: string | null; pm: string | null; pm2: string | null }>(rows: T[], sp: { pm?: string; q?: string }) {
@@ -47,3 +55,17 @@ export const getUser = cache(async function getUser() {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 });
+
+/** Every target completion date a project has had, newest first. Written by trigger (db/016). */
+export async function getTargetRevisions(projectId: string): Promise<TargetRevision[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("target_revisions").select("*, who:people(name)").eq("project_id", projectId).order("rev_no", { ascending: false });
+  return (data ?? []) as TargetRevision[];
+}
+
+/** People tagged on a project, over and above the PM / second PM / site engineer. */
+export async function getProjectWatchers(projectId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("project_watchers").select("person_id").eq("project_id", projectId);
+  return ((data ?? []) as { person_id: string }[]).map((r) => r.person_id);
+}
