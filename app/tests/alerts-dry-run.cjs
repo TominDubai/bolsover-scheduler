@@ -10,5 +10,5 @@ function q(rows) { let r = rows; const api = {
   eq: (k, v) => { r = r.filter(x => x[k] === v); return api; }, gte: () => api, then: (res) => res({ data: r }) }; return api; }
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://x'; process.env.SUPABASE_SERVICE_ROLE_KEY = 'x';
 require('module')._load = ((orig) => function (req, ...a) { if (req === '@supabase/supabase-js') return { createClient: () => ({ from: (t) => q(tables[t] ?? []) }) }; return orig.call(this, req, ...a); })(require('module')._load);
-const { runAlerts } = require(path.resolve('.alerts-test.cjs'));
+const { runAlerts } = require(require('path').resolve('.alerts-test.cjs'));
 runAlerts({ dryRun: true }).then((r) => { for (const p of r.planned) console.log(p.rule.padEnd(22), (p.to||'').padEnd(34), p.subject); });
