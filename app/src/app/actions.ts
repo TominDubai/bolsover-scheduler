@@ -666,6 +666,29 @@ export async function cancelPackage(projectId: string, packageId: string, cancel
   return { ok: true };
 }
 
+const sphone = (v: FormDataEntryValue | null) => { const s = nz(v)?.replace(/[\s\-()]/g, "") ?? null; if (s && !/^\+?\d{7,15}$/.test(s)) throw new Error("Phone should be digits only, e.g. +9715xxxxxxx"); return s; };
+/** Suppliers page (session 5): inline edit of a subcontractor / supplier. Projects or Estimation permission (RLS `write_projects` on suppliers). */
+export async function saveSupplier(id: string, _prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  try {
+    const name = nz(fd.get("name")); if (!name) return { error: "Name is required." };
+    const patch = { name, trade_id: nz(fd.get("trade_id")), contact: nz(fd.get("contact")), phone: sphone(fd.get("phone")), email: email(fd.get("email")), notes: nz(fd.get("notes")), is_active: fd.get("is_active") === "on" };
+    const { error } = await supabase.from("suppliers").update(patch).eq("id", id);
+    if (error) return { error: error.message.includes("suppliers_name_key") ? `Another supplier is already called ${name}.` : error.message.includes("row-level security") ? "You need the Projects or Quotes permission to edit suppliers." : error.message };
+  } catch (e) { return { error: (e as Error).message }; }
+  revalidatePath("/suppliers"); revalidatePath("/packages");
+  return { ok: true, at: new Date().toISOString() };
+}
+export async function addSupplier(_prev: unknown, fd: FormData) {
+  const supabase = await createClient();
+  try {
+    const name = nz(fd.get("name")); if (!name) return { error: "Company name is required." };
+    const { error } = await supabase.from("suppliers").insert({ name, trade_id: nz(fd.get("trade_id")), contact: nz(fd.get("contact")), phone: sphone(fd.get("phone")), email: email(fd.get("email")), notes: nz(fd.get("notes")) });
+    if (error) return { error: error.message.includes("suppliers_name_key") ? `${name} is already on the list.` : error.message.includes("row-level security") ? "You need the Projects or Quotes permission to add suppliers." : error.message };
+  } catch (e) { return { error: (e as Error).message }; }
+  revalidatePath("/suppliers"); revalidatePath("/packages");
+  return { ok: true, at: new Date().toISOString() };
+}
 export async function createSupplier(name: string, tradeId: string | null): Promise<{ id?: string; error?: string }> {
   const supabase = await createClient();
   const n = name.trim(); if (!n) return { error: "Name?" };

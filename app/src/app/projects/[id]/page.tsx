@@ -13,6 +13,7 @@ import TargetRevisions from "@/components/TargetRevisions";
 import TenderPanel from "@/components/TenderPanel";
 import ProjectMeetings from "@/components/ProjectMeetings";
 import PackagesPanel from "@/components/PackagesPanel";
+import JobPnl from "@/components/JobPnl";
 import { getBoqSummaries, getContract, getValuations, canSeeCost } from "@/lib/boq";
 import { getProject, getProjects, getPeople, getContractors, getMe, getTargetRevisions, getProjectWatchers, getEnquiryPasses, getProjectMeetings, getPackages, getTrades, getSuppliers } from "@/lib/data";
 import { createClient } from "@/lib/supabase/server";
@@ -84,6 +85,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
         </div>
         {(meetings.length > 0 || !p.deleted_at) && <ProjectMeetings meetings={meetings} projectId={p.id} />}
         <BoqPanel projectId={p.id} boqs={boqs} contract={contract} valuations={valuations} canEdit={canEdit} showCost={canSeeCost(meRow as Person | null)} isLive={ORDER[p.status] >= ORDER.WON && ORDER[p.status] <= ORDER.COMPLETED} />
+        {canSeeCost(meRow as Person | null) && ORDER[p.status] >= ORDER.WON && ORDER[p.status] <= ORDER.COMPLETED && <JobPnl contract={contract} packages={pkgLive} />}
         {(p.status === "LIVE" || p.status === "PRE_MOB") && (
           <Checkin p={p} checkins={(cks ?? []) as CheckinRow[]} canPost={me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id)} myId={me.id} />
         )}

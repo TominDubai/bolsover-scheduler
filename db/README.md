@@ -28,3 +28,7 @@ Applied 28 Oct 2026 (session 2 of the catch-up: Estimation + Meetings, via execu
 Applied 28 Oct 2026 (session 4 of the catch-up: Packages, via execute_sql, section by section):
 
 - `019_packages.sql` — `package_trades` (Tom's 18), `suppliers` (subcontractors; `contractors` stays the came-via list), `alert_settings` (P1/P4/P6/PA), and the package columns on **`programme_packages`** (trade, supplier, value, owner, five milestones, cancelled, authority approval line) — the P6 programme rows *are* the package rows, nothing duplicated. `stamp_package()` keeps milestones ↔ actual dates in step and derives `status`; `log_package_changes()` writes `change_log` kinds `package_*`. Views `packages_live`, `project_package_counts`. `projects_live` **not** rebuilt (counts are stitched on in the app), so nothing to drop. New policy `write_own_job` lets the PM / 2nd PM / site engineer edit their job's packages. Backfill: Sidra 170's 15 packages got a trade each (`package_trade_guess`) and the PM as owner; those change-log lines were marked notified.
+
+Session 5 (29 Oct 2026: Packages follow-ups):
+
+- `020_programme_imports.sql` — `programme_imports`: one row per P6 load (source file, data date, packages / activities upserted, new packages). The loader is now `import/programme_to_sql.py` (JSON → SQL); on an existing package it updates planned dates / days only and leaves every package column alone.

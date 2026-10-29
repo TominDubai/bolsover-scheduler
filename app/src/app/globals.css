@@ -525,3 +525,24 @@ td .due.crit { color: var(--crit); font-weight: 700; }
 .drawings tr.group td { padding: 14px 14px 6px; font: 800 13px var(--font); color: var(--navy); border-bottom: 0; background: var(--bg); } .drawings tr.group .enq { margin-right: 6px; } .drawings tr.group .status { margin-left: 8px; } .drawings tr.group small { color: var(--fg3); font-weight: 600; }
 .drawings td { padding: 9px 12px; }
 @media (max-width: 900px) { .additem { grid-template-columns: 1fr 1fr; } .drawer .form[style] { grid-template-columns: 1fr 1fr !important; } }
+
+/* suppliers (session 5) — the Team table, one row per company, with the live packages each one is on */
+.suppliers table { min-width: 1180px; }
+.suppliers td.notes { min-width: 180px; }
+.sup-jobs { display: flex; flex-direction: column; gap: 4px; }
+.sup-job { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.sup-proj { font: 700 12px var(--font); color: var(--navy); margin-right: 2px; white-space: nowrap; }
+.sup-job .pill { text-decoration: none; }
+
+/* job P&L cost side (session 5) */
+.pnl h2 small { font-weight: 600; color: var(--fg3); font-size: 13px; margin-left: 6px; }
+.pnl-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0 8px; }
+.pnl-cell { background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pnl-cell span { font: 700 11px var(--font); color: var(--fg3); text-transform: uppercase; letter-spacing: .06em; }
+.pnl-cell b { font: 800 18px/1.2 var(--font); color: var(--navy); letter-spacing: -.02em; }
+.pnl-cell small { color: var(--fg3); font-size: 12px; min-height: 14px; }
+.pnl-cell.crit { border-color: var(--crit); } .pnl-cell.crit b { color: var(--crit); }
+.pnl-bar { height: 6px; border-radius: 999px; background: var(--bg3); overflow: hidden; }
+.pnl-bar span { display: block; height: 100%; background: var(--bronze); border-radius: 999px; } .pnl-bar span.over { background: var(--crit); }
+.pnl-line { margin: 8px 0 0; font-size: 13px; color: var(--fg2); } .pnl-line.crit { color: var(--crit); font-weight: 700; }
+@media (max-width: 720px) { .pnl-grid { grid-template-columns: 1fr 1fr; } }

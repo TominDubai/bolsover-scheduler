@@ -115,6 +115,13 @@ export const getTrades = cache(async function getTrades(): Promise<PackageTrade[
   const { data } = await supabase.from("package_trades").select("*").eq("is_active", true).order("sort_order");
   return (data ?? []) as PackageTrade[];
 });
+/** every supplier including retired ones — the Suppliers page */
+export const getAllSuppliers = cache(async function getAllSuppliers(): Promise<Supplier[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("suppliers").select("*").order("name");
+  if (error) throw new Error(`suppliers: ${error.message}`);
+  return (data ?? []) as Supplier[];
+});
 export const getSuppliers = cache(async function getSuppliers(): Promise<Supplier[]> {
   const supabase = await createClient();
   const { data } = await supabase.from("suppliers").select("*").eq("is_active", true).order("name");

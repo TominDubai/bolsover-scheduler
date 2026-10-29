@@ -1,0 +1,488 @@
+{
+ "enquiry_no": "BBC/032026/00063",
+ "source": "New_Schedule.pdf",
+ "data_date": "2026-09-22",
+ "note": "Villa 170, Sidra 2 — programme baseline from Jasper's P6 export. Project RW-26-001: 208 days, 18-May-26 → 09-Feb-27.",
+ "project_start": "2026-05-18",
+ "project_target": "2027-02-09",
+ "packages": [
+  {
+   "code": "RW-26-001.1",
+   "name": "PRELIMINARIES",
+   "days": 97,
+   "start": "2026-05-18",
+   "finish": "2026-09-23",
+   "activities": [
+    {
+     "code": "A1000",
+     "name": "Mobilization, site setup, HSE & temporary facilities, and protection works",
+     "days": 10,
+     "start": "2026-05-18",
+     "finish": "2026-06-03"
+    },
+    {
+     "code": "A1010",
+     "name": "Shop drawings preparation & submission",
+     "days": 45,
+     "start": "2026-07-24",
+     "finish": "2026-09-23"
+    },
+    {
+     "code": "A1020",
+     "name": "Authority approvals / NOC coordination (by client, tracked)",
+     "days": 0,
+     "start": "2026-05-18",
+     "finish": "2026-05-18"
+    },
+    {
+     "code": "A1250",
+     "name": "DDA approvals",
+     "days": 96,
+     "start": "2026-05-18",
+     "finish": "2026-09-15"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.2",
+   "name": "SITE WORKS",
+   "days": 48,
+   "start": "2026-06-04",
+   "finish": "2026-07-30",
+   "activities": [
+    {
+     "code": "A1040",
+     "name": "Strip-out - bathrooms, kitchen, ceilings, doors, windows, flooring",
+     "days": 18,
+     "start": "2026-06-04",
+     "finish": "2026-06-24"
+    },
+    {
+     "code": "A1030",
+     "name": "Demolition - block walls, RCC column & roof slab opening",
+     "days": 24,
+     "start": "2026-06-25",
+     "finish": "2026-07-23"
+    },
+    {
+     "code": "A1050",
+     "name": "Cartway & disposal of debris",
+     "days": 30,
+     "start": "2026-06-25",
+     "finish": "2026-07-30"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.3",
+   "name": "CONCRETE WORKS",
+   "days": 63,
+   "start": "2026-08-11",
+   "finish": "2026-10-31",
+   "activities": [
+    {
+     "code": "A1080",
+     "name": "Raised floor system (125mm build-up) - kitchen",
+     "days": 5,
+     "start": "2026-08-11",
+     "finish": "2026-08-15"
+    },
+    {
+     "code": "A1060",
+     "name": "RCC suspended slab & beams (Pumpcrete/PCD ready mix) extension slabs",
+     "days": 28,
+     "start": "2026-09-23",
+     "finish": "2026-10-24"
+    },
+    {
+     "code": "A1090",
+     "name": "Raised floor system (150mm build-up) - master bathroom and closet on existing floor slab",
+     "days": 14,
+     "start": "2026-10-16",
+     "finish": "2026-10-31"
+    },
+    {
+     "code": "A1070",
+     "name": "Raised floor system at closet area in slab extension",
+     "days": 5,
+     "start": "2026-10-26",
+     "finish": "2026-10-30"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.4",
+   "name": "MASONRY / PARTITION",
+   "days": 105,
+   "start": "2026-07-24",
+   "finish": "2026-12-04",
+   "activities": [
+    {
+     "code": "A1100",
+     "name": "Block masonry walls (hollow & thermal block) not in slab and beam extension",
+     "days": 15,
+     "start": "2026-07-24",
+     "finish": "2026-08-10"
+    },
+    {
+     "code": "A1110",
+     "name": "Block masonry walls (hollow & thermal block) - at the slab and beam extension",
+     "days": 8,
+     "start": "2026-10-26",
+     "finish": "2026-11-03"
+    },
+    {
+     "code": "A1120",
+     "name": "Gypsum board partitions (closet dummy windows)",
+     "days": 6,
+     "start": "2026-11-26",
+     "finish": "2026-12-04"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.5",
+   "name": "METAL WORKS",
+   "days": 52,
+   "start": "2026-09-23",
+   "finish": "2026-11-21",
+   "activities": [
+    {
+     "code": "A1130",
+     "name": "Steel staircase - fabrication (offsite workshop)",
+     "days": 40,
+     "start": "2026-09-23",
+     "finish": "2026-11-07"
+    },
+    {
+     "code": "A1140",
+     "name": "Steel staircase - site installation incl. rooflight steelwork",
+     "days": 12,
+     "start": "2026-11-09",
+     "finish": "2026-11-21"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.6",
+   "name": "THERMAL & MOISTURE PROTECTION",
+   "days": 28,
+   "start": "2026-10-05",
+   "finish": "2026-11-05",
+   "activities": [
+    {
+     "code": "A1160",
+     "name": "Wet area waterproofing (horizontal & vertical)",
+     "days": 10,
+     "start": "2026-10-05",
+     "finish": "2026-10-15"
+    },
+    {
+     "code": "A1150",
+     "name": "Roof waterproofing membrane & rockwool insulation",
+     "days": 10,
+     "start": "2026-10-26",
+     "finish": "2026-11-05"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.7",
+   "name": "DOORS, WINDOWS & SKYLIGHTS",
+   "days": 54,
+   "start": "2026-09-24",
+   "finish": "2026-11-25",
+   "activities": [
+    {
+     "code": "A1170",
+     "name": "Aluminium glazed doors, windows & skylights - Schüco system - fabrication",
+     "days": 42,
+     "start": "2026-09-24",
+     "finish": "2026-11-11"
+    },
+    {
+     "code": "A1190",
+     "name": "Aluminium glazed doors, windows & skylights - Schüco system - installation",
+     "days": 12,
+     "start": "2026-11-12",
+     "finish": "2026-11-25"
+    },
+    {
+     "code": "A1180",
+     "name": "Wooden doors & ironmongery installation",
+     "days": 5,
+     "start": "2026-11-18",
+     "finish": "2026-11-23"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.8",
+   "name": "MEP WORKS",
+   "days": 100,
+   "start": "2026-07-24",
+   "finish": "2026-11-26",
+   "activities": [
+    {
+     "code": "A1210",
+     "name": "HVAC equipment and ductwork installation including removal of existing",
+     "days": 22,
+     "start": "2026-07-24",
+     "finish": "2026-08-18"
+    },
+    {
+     "code": "A1200",
+     "name": "MEP first fix - electrical containment, plumbing rough-in",
+     "days": 15,
+     "start": "2026-09-10",
+     "finish": "2026-10-03"
+    },
+    {
+     "code": "A1220",
+     "name": "HVAC grills and thermostat roughing-in",
+     "days": 12,
+     "start": "2026-11-02",
+     "finish": "2026-11-14"
+    },
+    {
+     "code": "A1240",
+     "name": "MEP testing & commissioning (incl. Hassantuk smart monitoring)",
+     "days": 7,
+     "start": "2026-11-16",
+     "finish": "2026-11-23"
+    },
+    {
+     "code": "A1230",
+     "name": "MEP second fix - fittings, fixtures, devices, sanitaryware",
+     "days": 10,
+     "start": "2026-11-16",
+     "finish": "2026-11-26"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.9",
+   "name": "FINISHES (WET TRADES)",
+   "days": 113,
+   "start": "2026-07-24",
+   "finish": "2026-12-14",
+   "activities": [
+    {
+     "code": "A1260",
+     "name": "Internal & external wall plastering on walls not in extension area",
+     "days": 21,
+     "start": "2026-07-24",
+     "finish": "2026-08-17"
+    },
+    {
+     "code": "A1480",
+     "name": "False ceiling frameworks and shadow gap",
+     "days": 24,
+     "start": "2026-10-05",
+     "finish": "2026-10-31"
+    },
+    {
+     "code": "A1490",
+     "name": "Internal and external plastering on walls at extension area",
+     "days": 10,
+     "start": "2026-11-04",
+     "finish": "2026-11-14"
+    },
+    {
+     "code": "A1270",
+     "name": "False ceiling works - gypsum board and precast curved design installation",
+     "days": 14,
+     "start": "2026-11-26",
+     "finish": "2026-12-14"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.10",
+   "name": "JOINERY WORKS",
+   "days": 59,
+   "start": "2026-09-24",
+   "finish": "2026-12-01",
+   "activities": [
+    {
+     "code": "A1500",
+     "name": "Joinery drawing approvals",
+     "days": 5,
+     "start": "2026-09-24",
+     "finish": "2026-09-29"
+    },
+    {
+     "code": "A1280",
+     "name": "Joinery - offsite fabrication (wardrobes, kitchen, vanities, cabinets)",
+     "days": 42,
+     "start": "2026-09-30",
+     "finish": "2026-11-17"
+    },
+    {
+     "code": "A1290",
+     "name": "Joinery - site installation & fitting-out",
+     "days": 12,
+     "start": "2026-11-18",
+     "finish": "2026-12-01"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.11",
+   "name": "FINISHES (HARD FINISHES)",
+   "days": 28,
+   "start": "2026-11-26",
+   "finish": "2027-01-06",
+   "activities": [
+    {
+     "code": "A1320",
+     "name": "Timber ceiling, wood grill works & gypsum installation",
+     "days": 12,
+     "start": "2026-11-26",
+     "finish": "2026-12-11"
+    },
+    {
+     "code": "A1310",
+     "name": "Floor finishes - wood floor, SPC, microcement and marble skirting",
+     "days": 12,
+     "start": "2026-11-30",
+     "finish": "2026-12-15"
+    },
+    {
+     "code": "A1300",
+     "name": "Wall finishes - textured paint finish, fenomastic paint finish, curved accent wall",
+     "days": 12,
+     "start": "2026-12-14",
+     "finish": "2026-12-30"
+    },
+    {
+     "code": "A1470",
+     "name": "Epoxy floor finish",
+     "days": 3,
+     "start": "2027-01-04",
+     "finish": "2027-01-06"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.12",
+   "name": "ACCESSORIES",
+   "days": 3,
+   "start": "2026-12-28",
+   "finish": "2026-12-30",
+   "activities": [
+    {
+     "code": "A1330",
+     "name": "Mirrors & smart film installation",
+     "days": 3,
+     "start": "2026-12-28",
+     "finish": "2026-12-30"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.13",
+   "name": "INTERNAL SNAGGING & CLOSE OUT",
+   "days": 3,
+   "start": "2027-01-04",
+   "finish": "2027-01-07",
+   "activities": [
+    {
+     "code": "A1340",
+     "name": "Internal snagging & de-snagging, internal deep cleaning",
+     "days": 3,
+     "start": "2027-01-04",
+     "finish": "2027-01-06"
+    },
+    {
+     "code": "A1350",
+     "name": "INTERNAL WORKS COMPLETE (TARGET)",
+     "days": 0,
+     "start": "2027-01-07",
+     "finish": "2027-01-07"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.14",
+   "name": "EXTERNAL WORKS",
+   "days": 109,
+   "start": "2026-09-23",
+   "finish": "2027-02-05",
+   "activities": [
+    {
+     "code": "A1370",
+     "name": "Pergola raise-up, dismantling & protection",
+     "days": 10,
+     "start": "2026-09-23",
+     "finish": "2026-10-03"
+    },
+    {
+     "code": "A1430",
+     "name": "Utility room base",
+     "days": 8,
+     "start": "2026-09-23",
+     "finish": "2026-10-01"
+    },
+    {
+     "code": "A1400",
+     "name": "Exterior painting - entire villa (weatherproof paint)",
+     "days": 12,
+     "start": "2027-01-04",
+     "finish": "2027-01-16"
+    },
+    {
+     "code": "A1440",
+     "name": "External snagging and touch-ups",
+     "days": 3,
+     "start": "2027-01-18",
+     "finish": "2027-01-20"
+    },
+    {
+     "code": "A1450",
+     "name": "Authority final inspection",
+     "days": 1,
+     "start": "2027-01-20",
+     "finish": "2027-01-20"
+    },
+    {
+     "code": "A1390",
+     "name": "External drainage, parapet wall & pipe insulation works",
+     "days": 4,
+     "start": "2027-01-21",
+     "finish": "2027-01-25"
+    },
+    {
+     "code": "A1460",
+     "name": "Utility room finishing",
+     "days": 14,
+     "start": "2027-01-21",
+     "finish": "2027-02-05"
+    }
+   ]
+  },
+  {
+   "code": "RW-26-001.15",
+   "name": "HANDOVER",
+   "days": 3,
+   "start": "2027-02-06",
+   "finish": "2027-02-09",
+   "activities": [
+    {
+     "code": "A1410",
+     "name": "Final handover and completion certificate",
+     "days": 2,
+     "start": "2027-02-06",
+     "finish": "2027-02-08"
+    },
+    {
+     "code": "A1420",
+     "name": "Project completion and handover (target)",
+     "days": 1,
+     "start": "2027-02-09",
+     "finish": "2027-02-09"
+    }
+   ]
+  }
+ ]
+}
