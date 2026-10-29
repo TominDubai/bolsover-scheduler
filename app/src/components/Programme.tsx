@@ -3,10 +3,11 @@ import { useActionState, useState } from "react";
 import { fmtD, packageTone, title, type Package, type Activity } from "@/lib/model";
 import { saveProgramme } from "@/app/actions";
 
-type Props = { projectId: string; packages: Package[]; activities: Activity[]; canEdit: boolean };
+export type ProgrammeImport = { source: string; data_date: string | null; imported_at: string; packages: number; new_packages: number };
+type Props = { projectId: string; packages: Package[]; activities: Activity[]; canEdit: boolean; lastImport?: ProgrammeImport | null };
 
 /** Programme: package-level baseline (from the P6 export) with site progress recorded against it. */
-export default function Programme({ projectId, packages, activities, canEdit }: Props) {
+export default function Programme({ projectId, packages, activities, canEdit, lastImport }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   if (packages.length === 0) {
     return (
@@ -25,6 +26,7 @@ export default function Programme({ projectId, packages, activities, canEdit }: 
         <h2>Programme <small style={{ fontWeight: 700, color: "var(--fg3)" }}>· progress against the P6 baseline</small></h2>
         <span className="note">{done}/{packages.length} packages done · {overall}% weighted · {late ? <b style={{ color: "var(--crit)" }}>{late} behind</b> : <b style={{ color: "var(--ok)" }}>on track</b>}</span>
       </div>
+      {lastImport && <p className="note" style={{ margin: "0 0 8px" }}>Planned dates from <b>{lastImport.source}</b>{lastImport.data_date ? ` (data date ${fmtD(lastImport.data_date)})` : ""}, loaded {fmtD(lastImport.imported_at)}{lastImport.new_packages ? ` · ${lastImport.new_packages} new package${lastImport.new_packages === 1 ? "" : "s"}` : ""}. Re-loading a newer export moves the planned dates only; what the team has recorded on each package stays.</p>}
       <div className="prog">
         <div className="prog-row prog-th"><span /><span>Package</span><span>Planned</span><span>Actual / forecast</span><span>Progress</span><span /></div>
         {packages.map((k) => {

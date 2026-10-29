@@ -4,7 +4,7 @@ import Shell from "@/components/Shell";
 import Failed from "@/components/Failed";
 import ProjectForm from "@/components/ProjectForm";
 import Variations from "@/components/Variations";
-import Programme from "@/components/Programme";
+import Programme, { type ProgrammeImport } from "@/components/Programme";
 import Checkin from "@/components/Checkin";
 import BoqPanel from "@/components/BoqPanel";
 import ArchiveBar from "@/components/ArchiveBar";
@@ -33,7 +33,9 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
     getBoqSummaries(id), getContract(id), getValuations(id), supabase.rpc("me"), getTargetRevisions(id), getProjectWatchers(id),
     getEnquiryPasses(id), getProjectMeetings(id), getProjects(),
   ]);
-  const [pkgLive, trades, suppliers] = await Promise.all([getPackages(id), getTrades(), getSuppliers()]);
+  const [pkgLive, trades, suppliers, { data: imps }] = await Promise.all([getPackages(id), getTrades(), getSuppliers(),
+    supabase.from("programme_imports").select("source, data_date, imported_at, packages, new_packages").eq("project_id", id).order("imported_at", { ascending: false }).limit(1)]);
+  const lastImport = ((imps ?? []) as ProgrammeImport[])[0] ?? null;
   const liveProjects = all.filter((x) => x.id !== id && !isQuote(x.status) && !isDead(x.status) && x.status !== "COMPLETED" && !x.archived_at).sort(byEnq).map((x) => ({ id: x.id, name: x.name, enquiry_no: x.enquiry_no }));
   const packages = (pkgs ?? []) as Package[];
   const { data: acts } = packages.length
@@ -94,7 +96,7 @@ async function Inner_ProjectPage({ params }: { params: Promise<{ id: string }> }
             canEdit={!p.deleted_at && (me.canProjects || [p.pm_id, p.pm2_id, p.site_engineer_id].includes(me.id))} showValue={canSeeCost(meRow as Person | null)} />
         )}
         {(packages.length > 0 || ORDER[p.status] >= ORDER.WON) && ORDER[p.status] <= ORDER.COMPLETED && (
-          <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects && !p.deleted_at} />
+          <Programme projectId={p.id} packages={packages} activities={(acts ?? []) as Activity[]} canEdit={me.canProjects && !p.deleted_at} lastImport={lastImport} />
         )}
         {canEdit ? (
           <div className="panel">
